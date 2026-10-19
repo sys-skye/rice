@@ -32,8 +32,9 @@ PanelWindow {
 
     // Focused app
     readonly property var win: Hyprland.activeToplevel
+    // (a focused window in a special Space — ⌘⇧M minimized, ⌘` terminal — is on screen too)
     readonly property bool hasWindow: win !== null && win.workspace !== null
-        && win.workspace?.id === Hyprland.focusedWorkspace?.id
+        && (win.workspace?.id === Hyprland.focusedWorkspace?.id || (win.workspace?.name ?? "").startsWith("special:"))
     readonly property string appId: !hasWindow ? "" : (win.wayland?.appId || win.lastIpcObject?.class || "")
     readonly property var entry: appId ? DesktopEntries.heuristicLookup(appId) : null
     readonly property string appName: !hasWindow ? "Desktop"
