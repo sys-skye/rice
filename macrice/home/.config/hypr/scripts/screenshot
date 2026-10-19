@@ -1,0 +1,31 @@
+#!/bin/bash
+# Usage: screenshot screen|region|edit
+# Saves to ~/Pictures/Screenshots and copies the image to the clipboard.
+
+dir="$HOME/Pictures/Screenshots"
+mkdir -p "$dir"
+file="$dir/Screenshot $(date '+%Y-%m-%d at %H.%M.%S').png"
+
+case "$1" in
+screen) grim "$file" ;;
+region | edit)
+  area=$(slurp -d -b '#00000066' -c '#ffffffcc' -w 1) || exit 0
+  grim -g "$area" "$file"
+  ;;
+*) echo "usage: screenshot screen|region|edit" >&2; exit 1 ;;
+esac
+
+[[ -f $file ]] || exit 1
+
+if [[ $1 == edit ]]; then
+  satty --filename "$file" --output-filename "$file" --copy-command wl-copy --early-exit
+  exit
+fi
+
+wl-copy <"$file"
+action=$(notify-send -a Screenshot -i "$file" -A open=Open -A folder="Show in Files" \
+  "Screenshot saved" "Copied to clipboard")
+case "$action" in
+open) xdg-open "$file" ;;
+folder) nautilus --select "$file" ;;
+esac

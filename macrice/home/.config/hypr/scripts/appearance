@@ -1,0 +1,55 @@
+#!/bin/bash
+# Switch the whole desktop between light and dark.   Usage: appearance dark|light
+# (The menu bar, dock and dropdowns follow on their own; this does everything else.)
+mode=$1
+[[ $mode == dark || $mode == light ]] || { echo "usage: appearance dark|light" >&2; exit 1; }
+
+# GTK apps + Firefox (system colour scheme)
+if [[ $mode == dark ]]; then
+  gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark
+  gsettings set org.gnome.desktop.interface icon-theme Papirus-Dark
+else
+  gsettings set org.gnome.desktop.interface color-scheme prefer-light 2>/dev/null ||
+    gsettings set org.gnome.desktop.interface color-scheme default
+  gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3
+  gsettings set org.gnome.desktop.interface icon-theme Papirus
+fi
+
+# KDE/Qt apps (Dolphin, KWrite…) — running ones update live
+if [[ $mode == dark ]]; then kscheme=BreezeDark kicons=Papirus-Dark; else kscheme=BreezeLight kicons=Papirus; fi
+kwriteconfig6 --file kdeglobals --group Icons --key Theme "$kicons"
+plasma-apply-colorscheme "$kscheme" >/dev/null 2>&1
+
+# kitty (live reload), Spotlight, notifications
+ln -sfn "theme-$mode.conf" ~/.config/kitty/current-theme.conf
+pkill -USR1 -x kitty
+# Alacritty reloads by itself when its config changes; touching it makes sure
+ln -sfn "theme-$mode.toml" ~/.config/alacritty/current-theme.toml
+touch ~/.config/alacritty/alacritty.toml
+ln -sfn "colors-$mode.ini" ~/.config/fuzzel/colors.ini
+ln -sfn "colors-$mode" ~/.config/mako/colors
+makoctl reload
+
+# Window borders
+if [[ $mode == dark ]]; then border="rgba(ffffff30)"; inactive="rgba(ffffff12)"; bg="rgb(111122)"
+else border="rgba(00000026)"; inactive="rgba(00000012)"; bg="rgb(e8ecf6)"; fi
+cat > ~/.config/hypr/appearance.conf <<CONF
+# Written by the Appearance switch (scripts/appearance). ${mode^} mode.
+general {
+    col.active_border = $border
+    col.inactive_border = $inactive
+}
+misc {
+    background_color = $bg
+}
+CONF
+
+# Wallpaper (lock screen uses the same file)
+wp=~/Pictures/Wallpapers
+if [[ $(readlink "$wp/current.jpg") != "sequoia-$mode.jpg" ]]; then
+  ln -sfn "sequoia-$mode.jpg" "$wp/current.jpg"
+  old=$(pgrep -x swaybg)
+  setsid -f uwsm-app -- swaybg -i "$wp/current.jpg" -m fill >/dev/null 2>&1
+  sleep 0.4; [[ -n $old ]] && kill $old
+fi

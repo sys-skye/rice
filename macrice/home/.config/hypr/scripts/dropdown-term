@@ -1,0 +1,17 @@
+#!/bin/bash
+# ⌘`: drop-down terminal that pops out of the notch (animation: quickshell/effects/NotchDropdown.qml).
+# A normal kitty window (class dropdown-term) living in the hidden "dropdown" Space.
+# Usage: dropdown-term [toggle|open|close]
+action=${1:-toggle}
+if ! hyprctl clients -j | jq -e 'any(.[]; .class == "dropdown-term")' >/dev/null; then
+  [[ $action == close ]] && exit 0
+  # First use: start it (hidden) in your home folder
+  cd ~ && setsid -f uwsm-app -- kitty --class dropdown-term --directory ~ >/dev/null 2>&1
+  for _ in $(seq 40); do
+    sleep 0.1
+    hyprctl clients -j | jq -e 'any(.[]; .class == "dropdown-term")' >/dev/null && break
+  done
+  sleep 0.15
+  action=open
+fi
+qs ipc call dropdown "$action"

@@ -1,0 +1,15 @@
+#!/bin/bash
+# Searchable list of every shortcut that has a description (Super + /)
+hyprctl -j binds | jq -r '
+  def mods: [ (if . % 2 >= 1 then "Shift" else empty end),
+              (if (. / 4 | floor) % 2 == 1 then "Ctrl" else empty end),
+              (if (. / 8 | floor) % 2 == 1 then "Alt" else empty end),
+              (if (. / 64 | floor) % 2 == 1 then "Super" else empty end) ];
+  .[] | select(.description != "")
+  | ((.modmask | mods) + [ (.key
+        | if test("^code:1[0-8]$") then (ltrimstr("code:") | tonumber - 9 | tostring)
+          elif . == "mouse:272" then "Left-drag" elif . == "mouse:273" then "Right-drag"
+          elif . == "mouse_down" then "Scroll down" elif . == "mouse_up" then "Scroll up" else . end) ]) as $k
+  | "\($k | join(" + "))\t\(.description)"' |
+  awk -F'\t' '{ printf "%-28s %s\n", $1, $2 }' |
+  fuzzel --dmenu --prompt "⌘  " --width 70 --lines 18 --font "JetBrainsMono Nerd Font:size=11" >/dev/null

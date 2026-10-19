@@ -1,0 +1,16 @@
+#!/bin/bash
+# One-time setup (needs sudo): let members of "wheel" change the battery charge
+# limit, so the menu bar's battery dropdown can set it without a password.
+# Asahi's own asahi-battery package already remembers the limit across reboots.
+set -e
+rule=/etc/udev/rules.d/94-macsmc-battery-user.rules
+sudo tee "$rule" >/dev/null <<'RULE'
+# Allow wheel to change the charge limit (used by the Quickshell battery menu)
+SUBSYSTEM=="power_supply", KERNEL=="macsmc-battery", RUN+="/bin/sh -c 'chgrp wheel /sys%p/charge_control_end_threshold /sys%p/charge_control_start_threshold && chmod g+w /sys%p/charge_control_end_threshold /sys%p/charge_control_start_threshold'"
+RULE
+sudo udevadm control --reload
+sudo udevadm trigger --action=change --subsystem-match=power_supply --sysname-match=macsmc-battery
+sleep 1
+f=/sys/class/power_supply/macsmc-battery/charge_control_end_threshold
+if [ -w "$f" ]; then echo "Done: you can now set the charge limit from the battery menu."
+else echo "The rule is installed, but $f is still not writable. Try logging out and back in."; fi

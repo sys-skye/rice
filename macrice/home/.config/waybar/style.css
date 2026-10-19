@@ -1,0 +1,84 @@
+/* Menu bar: translucent dark glass (Hyprland blurs what's behind it) */
+* {
+  font-family: "Inter", "Inter Variable", "JetBrainsMono Nerd Font", sans-serif;
+  font-size: 13px;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
+window#waybar {
+  background: rgba(22, 22, 28, 0.45);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+tooltip {
+  background: rgba(30, 30, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+tooltip label { padding: 4px 6px; }
+
+.modules-left { padding-left: 14px; }
+.modules-right { padding-right: 14px; }
+
+#custom-logo {
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 17px;
+  padding: 0 14px 0 6px;
+}
+
+#window {
+  font-weight: 700;
+  padding: 0 14px 0 0;
+}
+
+#workspaces button {
+  padding: 0 4px;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 9px;
+  background: transparent;
+  box-shadow: none;
+}
+#workspaces button.active { color: #ffffff; }
+#workspaces button:hover { background: rgba(255, 255, 255, 0.12); border-radius: 6px; }
+
+#tray,
+#idle_inhibitor,
+#custom-dnd,
+#bluetooth,
+#network,
+#pulseaudio,
+#battery,
+#clock {
+  padding: 0 9px;
+  margin: 5px 0;
+  border-radius: 6px;
+}
+
+#idle_inhibitor,
+#custom-dnd,
+#bluetooth,
+#network,
+#pulseaudio {
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 15px;
+}
+
+#idle_inhibitor:hover,
+#custom-dnd:hover,
+#bluetooth:hover,
+#network:hover,
+#pulseaudio:hover,
+#battery:hover,
+#clock:hover,
+#custom-logo:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+}
+
+#idle_inhibitor.activated { color: #ffd60a; }
+#battery.warning:not(.charging) { color: #ff9f0a; }
+#battery.critical:not(.charging) { color: #ff453a; }
+#clock { font-weight: 500; }

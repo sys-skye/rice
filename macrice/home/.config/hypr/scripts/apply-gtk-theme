@@ -1,0 +1,19 @@
+#!/bin/bash
+# Apply the macOS-like look to GTK apps (Files, Calculator, Firefox dialogs…)
+# Run again after installing new themes/fonts. Fine-tune with nwg-look.
+g() { gsettings set org.gnome.desktop.interface "$@"; }
+
+g color-scheme prefer-dark
+gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:'
+
+rpm -q adw-gtk3-theme >/dev/null && g gtk-theme adw-gtk3-dark || g gtk-theme Adwaita-dark
+rpm -q papirus-icon-theme >/dev/null && g icon-theme Papirus-Dark
+if fc-list | grep -q 'Inter'; then
+  g font-name 'Inter 11'
+  g document-font-name 'Inter 11'
+fi
+g monospace-font-name 'JetBrainsMono Nerd Font 11'
+g font-antialiasing grayscale
+g font-hinting slight
+
+echo "GTK theme: $(gsettings get org.gnome.desktop.interface gtk-theme), icons: $(gsettings get org.gnome.desktop.interface icon-theme), font: $(gsettings get org.gnome.desktop.interface font-name)"

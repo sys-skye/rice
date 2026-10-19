@@ -1,0 +1,26 @@
+#!/bin/bash
+# The "Apple menu": lock, sleep, restart, shut down, log out
+
+choice=$(printf '%s\n' \
+  "󰌾  Lock Screen" \
+  "󰒲  Sleep" \
+  "󰜉  Restart…" \
+  "󰐥  Shut Down…" \
+  "󰍃  Log Out…" \
+  "󰄨  System Monitor" \
+  "󰏘  Appearance (GTK settings)" |
+  fuzzel --dmenu --prompt "  " --width 28 --lines 7 --no-sort) || exit 0
+
+confirm() {
+  [[ $(printf 'Cancel\n%s\n' "$1" | fuzzel --dmenu --prompt "$1? " --width 28 --lines 2) == "$1" ]]
+}
+
+case "$choice" in
+*Lock*) loginctl lock-session ;;
+*Sleep*) systemctl suspend ;;
+*Restart*) confirm "Restart" && systemctl reboot ;;
+*Shut*) confirm "Shut Down" && systemctl poweroff ;;
+*Log*) confirm "Log Out" && uwsm stop ;;
+*Monitor*) uwsm-app -- kitty --class floating-term btop ;;
+*Appearance*) uwsm-app -- nwg-look ;;
+esac

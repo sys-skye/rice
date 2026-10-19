@@ -1,0 +1,41 @@
+#!/bin/bash
+# Volume / brightness / keyboard light keys. Shows the level in the little
+# indicator that pops out of the notch (quickshell/effects/NotchOSD.qml);
+# falls back to a notification if the shell isn't running.
+# Usage: osd volume +5|-5|mute | mic mute | brightness +5%|5%- | keyboard +10%|10%-
+
+ID_FILE="${XDG_RUNTIME_DIR:-/tmp}/osd.id"
+
+# show <kind> <0-100> <fallback text>
+show() {
+  qs ipc call osd pop "$1" "$2" >/dev/null 2>&1 && return
+  local id
+  id=$(cat "$ID_FILE" 2>/dev/null)
+  notify-send -p ${id:+-r "$id"} -a OSD -u low -t 1200 -h int:value:"$2" "$3" >"$ID_FILE"
+}
+
+case "$1" in
+volume)
+  if [[ $2 == mute ]]; then
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+  else
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+    wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ "${2#[+-]}%${2:0:1}"
+  fi
+  out=$(wpctl get-volume @DEFAULT_AUDIO_SINK@)
+  vol=$(awk '{printf "%d", $2 * 100}' <<<"$out")
+  if [[ $out == *MUTED* ]]; then show muted "$vol" "󰝟  Muted"; else show volume "$vol" "󰕾  Volume"; fi
+  ;;
+mic)
+  wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+  if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q MUTED; then show micmuted 0 "󰍭  Microphone off"; else show mic 100 "󰍬  Microphone on"; fi
+  ;;
+brightness)
+  brightnessctl -q -c backlight set "$2"
+  show brightness "$(brightnessctl -m -c backlight | cut -d, -f4 | tr -d %)" "󰃠  Brightness"
+  ;;
+keyboard)
+  brightnessctl -q -d kbd_backlight set "$2"
+  show keyboard "$(brightnessctl -m -d kbd_backlight | cut -d, -f4 | tr -d %)" "󰌌  Keyboard light"
+  ;;
+esac

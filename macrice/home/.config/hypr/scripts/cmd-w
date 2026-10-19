@@ -1,0 +1,7 @@
+#!/bin/bash
+# ⌘W = close tab. Most apps use Ctrl+W for that, but in kitty Ctrl+W deletes a
+# word in the shell, so kitty gets Ctrl+Shift+W (mapped to close_tab) instead.
+case "$(hyprctl -j activewindow | jq -r '.class')" in
+kitty | floating-term) hyprctl dispatch sendshortcut "CTRL SHIFT, W, activewindow" ;;
+*) hyprctl dispatch sendshortcut "CTRL, W, activewindow" ;;
+esac >/dev/null

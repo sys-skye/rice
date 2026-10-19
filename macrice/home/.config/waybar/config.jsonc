@@ -1,0 +1,119 @@
+// Menu bar (top). The middle stays empty: that's where the notch is.
+{
+  "name": "menubar",
+  "layer": "top",
+  "position": "top",
+  "height": 32,
+  "spacing": 2,
+  "modules-left": ["custom/logo", "hyprland/window", "hyprland/workspaces"],
+  "modules-center": [],
+  "modules-right": [
+    "tray",
+    "idle_inhibitor",
+    "custom/dnd",
+    "bluetooth",
+    "network",
+    "pulseaudio",
+    "battery",
+    "clock"
+  ],
+
+  "custom/logo": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "~/.config/hypr/scripts/powermenu"
+  },
+
+  // Bold name of the focused app, like the macOS app menu
+  "hyprland/window": {
+    "format": "{class}",
+    "separate-outputs": true,
+    "icon": false,
+    "rewrite": {
+      "": "Desktop",
+      "(?:org\\.mozilla\\.)?firefox": "Firefox",
+      "Alacritty|kitty": "Terminal",
+      "org\\.gnome\\.Nautilus": "Files",
+      "org\\.kde\\.kwrite": "Text Editor",
+      "org\\.pulseaudio\\.pavucontrol": "Sound",
+      "blueman-manager": "Bluetooth",
+      "floating-term": "Terminal",
+      "(?:[\\w-]+\\.)+([\\w-]+)": "$1"
+    }
+  },
+
+  "hyprland/workspaces": {
+    "format": "{icon}",
+    "format-icons": { "active": "●", "default": "○", "empty": "○" },
+    "persistent-workspaces": { "*": 3 },
+    "on-scroll-up": "hyprctl dispatch workspace e-1",
+    "on-scroll-down": "hyprctl dispatch workspace e+1"
+  },
+
+  "tray": { "icon-size": 16, "spacing": 10 },
+
+  "idle_inhibitor": {
+    "format": "{icon}",
+    "format-icons": { "activated": "󰅶", "deactivated": "󰛊" },
+    "tooltip-format-activated": "Caffeinated: screen stays awake",
+    "tooltip-format-deactivated": "Click to keep the screen awake"
+  },
+
+  // Do Not Disturb (mako). Bell = on, slashed bell = notifications silenced.
+  "custom/dnd": {
+    "exec": "makoctl mode | grep -q do-not-disturb && echo '󰂛' || echo '󰂚'",
+    "interval": "once",
+    "signal": 8,
+    "tooltip": false,
+    "on-click": "makoctl mode -t do-not-disturb >/dev/null; pkill -RTMIN+8 -x waybar",
+    "on-click-right": "makoctl dismiss --all"
+  },
+
+  "bluetooth": {
+    "format": "󰂯",
+    "format-off": "󰂲",
+    "format-disabled": "󰂲",
+    "format-connected": "󰂱",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "on-click": "uwsm-app -- blueman-manager"
+  },
+
+  "network": {
+    "format-wifi": "{icon}",
+    "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+    "format-ethernet": "󰈀",
+    "format-disconnected": "󰤮",
+    "tooltip-format-wifi": "{essid}  ·  {signalStrength}%\n{ipaddr}",
+    "tooltip-format-ethernet": "{ifname}\n{ipaddr}",
+    "on-click": "uwsm-app -- kitty --class floating-term nmtui"
+  },
+
+  "pulseaudio": {
+    "format": "{icon}",
+    "format-muted": "󰝟",
+    "format-icons": { "default": ["󰕿", "󰖀", "󰕾"], "headphone": "󰋋" },
+    "tooltip-format": "Volume {volume}%",
+    "scroll-step": 5,
+    "on-click": "uwsm-app -- pavucontrol",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+  },
+
+  "battery": {
+    "format": "{capacity}% {icon}",
+    "format-charging": "{capacity}% 󰂄",
+    "format-plugged": "{capacity}% 󰚥",
+    "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
+    "states": { "warning": 20, "critical": 10 },
+    "tooltip-format": "{timeTo}\n{power:.1f} W"
+  },
+
+  "clock": {
+    "format": "{:%a %-d %b  %H:%M}",
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "mode": "month",
+      "format": { "today": "<span color='#0a84ff'><b>{}</b></span>" }
+    }
+  }
+}

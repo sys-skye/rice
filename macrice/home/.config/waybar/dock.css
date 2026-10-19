@@ -1,0 +1,63 @@
+/* Dock: a floating glass pill in the middle of the bottom edge */
+* {
+  font-family: "JetBrainsMono Nerd Font", sans-serif;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
+window#waybar { background: transparent; }
+
+.modules-center {
+  background: rgba(40, 40, 48, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  padding: 0 6px;
+}
+
+#image {
+  padding: 0 5px;
+  margin: 4px 0;
+  border-radius: 12px;
+}
+#image:hover,
+#taskbar button:hover,
+#custom-apps:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#custom-separator {
+  min-width: 1px;
+  margin: 12px 7px;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+#taskbar button {
+  padding: 0 5px;
+  margin: 4px 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  /* little "running" dot under every open window */
+  border-bottom: 3px solid transparent;
+}
+#taskbar button.active {
+  background: rgba(255, 255, 255, 0.10);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.75);
+}
+#taskbar button.minimized { opacity: 0.55; }
+
+#custom-apps {
+  font-size: 28px;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 0 12px;
+  margin: 4px 0;
+  border-radius: 12px;
+}
+
+tooltip {
+  background: rgba(30, 30, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  font-family: "Inter", sans-serif;
+}

@@ -1,0 +1,50 @@
+#!/bin/bash
+# Make an app you installed by hand (a .tar.gz folder or an .AppImage) show up in
+# Search (⌘Space), the dock's "Add App…" list and "Open With" menus.
+#
+#   add-to-search <program> ["Name"] [icon]
+#
+#   add-to-search ~/Apps/Obsidian.AppImage
+#   add-to-search ~/.local/share/Foo/bin/foo "Foo Studio" ~/.local/share/Foo/foo.png
+#
+# Remove it again:  add-to-search --remove "Name"
+set -euo pipefail
+apps=~/.local/share/applications
+
+if [[ ${1:-} == --remove ]]; then
+  id=$(tr '[:upper:] ' '[:lower:]-' <<<"${2:?usage: add-to-search --remove \"Name\"}")
+  rm -v "$apps/$id.desktop"; exit
+fi
+
+prog=$(realpath "${1:?usage: add-to-search <program> [\"Name\"] [icon]}")
+[[ -f $prog ]] || { echo "Not found: $prog" >&2; exit 1; }
+chmod +x "$prog"
+
+# Name: given, or from the file name ("obsidian-1.2.3.AppImage" → "Obsidian")
+name=${2:-$(basename "$prog" | sed -E 's/\.AppImage$//I; s/[-_][0-9].*$//; s/[-_]/ /g; s/\b(.)/\u\1/g')}
+id=$(tr '[:upper:] ' '[:lower:]-' <<<"$name")
+
+# Icon: given, or the best-looking image next to the program
+icon=${3:-}
+if [[ -z $icon ]]; then
+  dir=$(dirname "$prog")
+  key=$(basename "$prog" | cut -c1-4)
+  while IFS= read -r f; do                 # match on the image's file name only
+    [[ $(basename "$f") =~ ($key|icon|logo) ]] && { icon=$(realpath "$f"); break; }
+  done < <(find "$dir" "$dir/.." -maxdepth 2 \( -iname "*.svg" -o -iname "*.png" \) 2>/dev/null)
+fi
+icon=${icon:-application-x-executable}
+
+mkdir -p "$apps"
+cat >"$apps/$id.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=$name
+Exec="$prog" %U
+Icon=$icon
+Terminal=false
+Categories=Utility;
+DESKTOP
+update-desktop-database "$apps" 2>/dev/null || true
+echo "Added \"$name\" to Search  →  $apps/$id.desktop"
+echo "If its dock icon doesn't get the running dot, add a StartupWMClass= line (find the class with: hyprctl clients)."

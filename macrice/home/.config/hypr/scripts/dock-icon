@@ -1,0 +1,13 @@
+#!/bin/bash
+# Print the best icon file for an app, for the waybar dock: dock-icon <icon-name>
+# Searches icon themes in order of preference, favouring SVGs, then big PNGs.
+for theme in Papirus Yaru breeze hicolor Adwaita; do
+  dir="/usr/share/icons/$theme"
+  [[ -d $dir ]] || continue
+  hit=$(find -L "$dir" -path '*/apps/*' \( -name "$1.svg" -o -name "$1.png" \) 2>/dev/null |
+    awk '{ s = /\.svg$/ ? 9999 : 0; if (match($0, /[0-9]+x[0-9]+/)) s += substr($0, RSTART, index(substr($0, RSTART), "x") - 1); print s "\t" $0 }' |
+    sort -rn | head -1 | cut -f2)
+  [[ -n $hit ]] && { echo "$hit"; exit; }
+done
+for f in /usr/share/pixmaps/$1.{svg,png}; do [[ -f $f ]] && { echo "$f"; exit; }; done
+echo /usr/share/icons/Adwaita/scalable/mimetypes/application-x-executable.svg

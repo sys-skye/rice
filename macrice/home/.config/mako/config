@@ -1,0 +1,40 @@
+# Notifications: macOS-style banners in the top-right corner. Docs: man 5 mako
+# Colours: colors → colors-dark / colors-light (switched by Appearance)
+include=~/.config/mako/colors
+font=Inter 11
+anchor=top-right
+outer-margin=10,10,0,0
+margin=8
+width=360
+padding=14,16
+border-size=1
+border-radius=14
+progress-color=over #0a84ffcc
+icons=1
+max-icon-size=40
+icon-location=left
+default-timeout=5000
+group-by=app-name,summary
+format=<b>%s</b>\n%b
+layer=overlay
+
+[urgency=critical]
+border-color=#ff453acc
+default-timeout=0
+
+# Volume / brightness popups: compact, top-centre (just under the notch)
+[app-name=OSD]
+anchor=top-center
+outer-margin=10,0,0,0
+width=240
+format=<b>%s</b>
+history=0
+
+[app-name=Screenshot]
+max-icon-size=72
+
+# Do Not Disturb (toggled from the bell in the menu bar)
+[mode=do-not-disturb]
+invisible=1
+[mode=do-not-disturb urgency=critical]
+invisible=0

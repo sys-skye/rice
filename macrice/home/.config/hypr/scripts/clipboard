@@ -1,0 +1,4 @@
+#!/bin/bash
+# Clipboard history picker (Super+Shift+V). Pick an entry, then paste with Super+V.
+pick=$(cliphist list | fuzzel --dmenu --prompt "󰅌  " --width 60 --lines 12) || exit 0
+cliphist decode <<<"$pick" | wl-copy

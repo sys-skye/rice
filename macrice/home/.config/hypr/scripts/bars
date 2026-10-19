@@ -1,0 +1,21 @@
+#!/bin/bash
+# Start / restart the desktop shell (menu bar, dropdowns, dock) = Quickshell,
+# run as a systemd user service so it restarts by itself if it ever crashes.
+# Config: ~/.config/quickshell.   Usage: bars start|restart|waybar
+#   waybar → fall back to the old waybar menu bar + dock (~/.config/waybar)
+
+case "$1" in
+waybar)
+  systemctl --user stop quickshell.service
+  pkill -x quickshell; pkill -x waybar; sleep 0.3
+  setsid -f uwsm-app -- waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css >/dev/null 2>&1
+  setsid -f uwsm-app -- waybar -c ~/.config/waybar/dock.jsonc -s ~/.config/waybar/dock.css >/dev/null 2>&1
+  exit ;;
+esac
+
+# No Quickshell installed? Fall back to waybar so there is always a bar.
+command -v quickshell >/dev/null || exec "$0" waybar
+pkill -x waybar
+pgrep -x quickshell >/dev/null && ! systemctl --user -q is-active quickshell.service && pkill -x quickshell  # one started the old way
+systemctl --user daemon-reload
+if [[ $1 == restart ]]; then systemctl --user restart quickshell.service; else systemctl --user start quickshell.service; fi

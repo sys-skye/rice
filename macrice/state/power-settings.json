@@ -1,0 +1,5 @@
+{
+  "sleepOnBattery": 15,
+  "sleepOnPower": 0,
+  "trailOnBattery": false
+}

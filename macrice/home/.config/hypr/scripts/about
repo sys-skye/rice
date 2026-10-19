@@ -1,0 +1,5 @@
+#!/bin/bash
+# "About This Computer" card: full fastfetch, closes on any key (or ⌘Q).
+fastfetch
+printf '\e[?25l'          # hide the cursor
+read -rsn1

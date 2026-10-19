@@ -1,0 +1,26 @@
+#!/bin/bash
+# Apply a cursor theme + size everywhere.   Usage: cursor-apply <theme> <size>
+# Called automatically when GTK Settings / System Settings change the cursor.
+theme=$1 size=$2
+[[ -n $theme && $size =~ ^[0-9]+$ ]] || { echo "usage: cursor-apply <theme> <size>" >&2; exit 1; }
+
+hyprctl setcursor "$theme" "$size" >/dev/null                 # compositor + XWayland, live
+# Hyprland keeps showing the old image until the cursor is redrawn: hide/show + 1px nudge
+pos=$(hyprctl cursorpos | tr -d ' ')
+hyprctl --batch "keyword cursor:invisible true; keyword cursor:invisible false; dispatch movecursor $(( ${pos%,*} + 1 )) ${pos#*,}; dispatch movecursor ${pos%,*} ${pos#*,}" >/dev/null
+systemctl --user set-environment XCURSOR_THEME="$theme" XCURSOR_SIZE="$size" HYPRCURSOR_SIZE="$size"
+dbus-update-activation-environment XCURSOR_THEME="$theme" XCURSOR_SIZE="$size" 2>/dev/null
+
+# Remember for the next login (sourced by hyprland.conf)
+cat > ~/.config/hypr/cursor.conf <<CONF
+# Written by scripts/cursor-apply (System Settings / GTK Settings). Don't edit by hand.
+env = XCURSOR_THEME,$theme
+env = XCURSOR_SIZE,$size
+env = HYPRCURSOR_SIZE,$size
+CONF
+
+# Old X11 apps, and KDE/Qt apps
+mkdir -p ~/.icons/default
+printf '[Icon Theme]\nInherits=%s\n' "$theme" > ~/.icons/default/index.theme
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme "$theme"
+kwriteconfig6 --file kcminputrc --group Mouse --key cursorSize "$size"

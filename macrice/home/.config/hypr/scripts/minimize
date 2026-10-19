@@ -1,0 +1,12 @@
+#!/bin/bash
+# Super+M: hide the focused window in the "minimized" scratch space.
+# Pressed on a window inside that space (Super+Shift+M), it brings it back.
+win=$(hyprctl -j activewindow)
+[[ $(jq -r '.address // empty' <<<"$win") ]] || exit 0
+
+if [[ $(jq -r '.workspace.name' <<<"$win") == special:minimized ]]; then
+  ws=$(hyprctl -j activeworkspace | jq -r '.id')
+  hyprctl --batch "dispatch togglespecialworkspace minimized; dispatch movetoworkspace $ws"
+else
+  hyprctl dispatch movetoworkspacesilent special:minimized
+fi

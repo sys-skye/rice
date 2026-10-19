@@ -1,0 +1,68 @@
+// Dock (bottom): pinned apps │ open windows │ app launcher
+// To pin an app: copy an "image#..." block, set its icon name + command,
+// and add it to modules-center. Icon names are in /usr/share/applications/*.desktop (Icon=).
+{
+  "name": "dock",
+  "layer": "top",
+  "position": "bottom",
+  "height": 62,
+  "margin-bottom": 6,
+  "spacing": 0,
+  "exclusive": true,
+  "modules-center": [
+    "image#files",
+    "image#firefox",
+    "image#terminal",
+    "image#editor",
+    "image#calculator",
+    "custom/separator",
+    "wlr/taskbar",
+    "custom/separator",
+    "custom/apps"
+  ],
+
+  "image#files": {
+    "exec": "~/.config/hypr/scripts/dock-icon org.gnome.Nautilus",
+    "interval": 86400, "size": 44, "tooltip": false,
+    "on-click": "uwsm-app -- nautilus --new-window"
+  },
+  "image#firefox": {
+    "exec": "~/.config/hypr/scripts/dock-icon firefox",
+    "interval": 86400, "size": 44, "tooltip": false,
+    "on-click": "uwsm-app -- firefox"
+  },
+  "image#terminal": {
+    "exec": "~/.config/hypr/scripts/dock-icon kitty",
+    "interval": 86400, "size": 44, "tooltip": false,
+    "on-click": "uwsm-app -- kitty"
+  },
+  "image#editor": {
+    "exec": "~/.config/hypr/scripts/dock-icon kwrite",
+    "interval": 86400, "size": 44, "tooltip": false,
+    "on-click": "uwsm-app -- kwrite"
+  },
+  "image#calculator": {
+    "exec": "~/.config/hypr/scripts/dock-icon org.gnome.Calculator",
+    "interval": 86400, "size": 44, "tooltip": false,
+    "on-click": "uwsm-app -- gnome-calculator"
+  },
+
+  "custom/separator": { "format": "", "tooltip": false },
+
+  // Open windows: click to focus, middle-click to close
+  "wlr/taskbar": {
+    "format": "{icon}",
+    "icon-size": 40,
+    "icon-theme": ["Papirus", "Yaru", "breeze", "hicolor"],
+    "tooltip-format": "{title}",
+    "on-click": "activate",
+    "on-click-middle": "close",
+    "app_ids-mapping": { "org.mozilla.firefox": "firefox" }
+  },
+
+  "custom/apps": {
+    "format": "󰀻",
+    "tooltip": false,
+    "on-click": "pkill fuzzel || fuzzel"
+  }
+}

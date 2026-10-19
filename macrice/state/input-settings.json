@@ -14,8 +14,8 @@
   "repeatRate": 40,
   "repeatDelay": 250,
   "trailEnabled": true,
-  "trailLength": 57.945829028925615,
-  "trailStrength": 0.6663634749483471,
+  "trailLength": 46.18301265495868,
+  "trailStrength": 0.879055559142562,
   "displayScale": 2,
   "swipeDistance": 275,
   "swipeSwitchAt": 0.15000000000000002,
@@ -28,5 +28,6 @@
   "extScale": 1.25,
   "extPosition": "left",
   "extMirror": false,
-  "mainDisplay": "external"
+  "mainDisplay": "external",
+  "separateSpaces": false
 }
