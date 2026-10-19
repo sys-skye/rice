@@ -6,7 +6,7 @@ win=$(hyprctl -j activewindow)
 
 if [[ $(jq -r '.workspace.name' <<<"$win") == special:minimized ]]; then
   ws=$(hyprctl -j activeworkspace | jq -r '.id')
-  hyprctl --batch "dispatch togglespecialworkspace minimized; dispatch movetoworkspace $ws"
+  hyprctl --batch "dispatch hl.dsp.workspace.toggle_special('minimized'); dispatch hl.dsp.window.move({ workspace = $ws })"
 else
-  hyprctl dispatch movetoworkspacesilent special:minimized
+  hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:minimized", follow = false })'
 fi

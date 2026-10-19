@@ -8,7 +8,7 @@ numbered 1, 2, 3… independently of the other screen:
   HDMI-A-1             101 … 199
   any other output     201 …, 301 … (by name)
 
-monitors.conf pins those ids to their display, so Spaces created any way
+monitors.lua pins those ids to their display, so Spaces created any way
 (keys, swipes, session restore) open on the right screen. compact-spaces
 keeps each block gap-free.
 
@@ -74,18 +74,24 @@ def main(argv):
     def nth(n):
         return ids[n - 1] if 1 <= n <= len(ids) else fresh
 
-    target_addr = f",address:{addr}" if addr else ""
+    window = f", window = 'address:{addr}'" if addr else ""
+
+    def go(ws):
+        hypr("dispatch", f"hl.dsp.focus({{ workspace = {ws} }})")
+
+    def move(ws, follow=True):
+        hypr("dispatch", f"hl.dsp.window.move({{ workspace = {ws}, follow = {str(follow).lower()}{window} }})")
+
     if action in ("go", "move", "send"):
         target = fresh if arg == "new" else nth(max(1, int(arg)))
-        dispatcher = {"go": "workspace", "move": "movetoworkspace", "send": "movetoworkspacesilent"}[action]
-        hypr("dispatch", dispatcher, f"{target}{target_addr if action != 'go' else ''}")
+        go(target) if action == "go" else move(target, follow=action == "move")
     elif action in ("next", "movenext"):
         empty_here = next((w["windows"] == 0 for w in mine if w["id"] == current), False)
         if idx < len(ids) or not empty_here:  # step past the last Space only if it has windows
-            hypr("dispatch", "workspace" if action == "next" else "movetoworkspace", str(nth(idx + 1)))
+            go(nth(idx + 1)) if action == "next" else move(nth(idx + 1))
     elif action in ("prev", "moveprev"):
         if idx > 1:
-            hypr("dispatch", "workspace" if action == "prev" else "movetoworkspace", str(nth(idx - 1)))
+            go(nth(idx - 1)) if action == "prev" else move(nth(idx - 1))
     else:
         sys.exit(__doc__)
 

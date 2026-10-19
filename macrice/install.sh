@@ -48,6 +48,11 @@ else
   mapfile -t pkgs < <(sed 's/#.*//' "$repo/packages.txt" | tr ' ' '\n' | grep -v '^$')
   sudo dnf install -y --skip-unavailable "${pkgs[@]}"
 fi
+# The config is Lua (hyprland.lua), which needs Hyprland 0.55 or newer
+hl_version=$(Hyprland --version-json 2>/dev/null | sed -n 's/.*"tag": *"v\{0,1\}\([0-9.]*\)".*/\1/p' | head -1)
+if [[ -n $hl_version ]] && [[ $(printf '%s\n' 0.55 "$hl_version" | sort -V | head -1) != 0.55 ]]; then
+  warn "Hyprland $hl_version is too old for this config (needs 0.55+, which reads hyprland.lua)"
+fi
 
 # ── 2. Nerd Font (icons in the bar, dock, terminal) ────────────────
 step "JetBrainsMono Nerd Font"
@@ -136,8 +141,8 @@ fi
 # ── 8. Theme: GTK, KDE/Qt apps, cursor, default apps ───────────────
 step "Theming apps"
 ~/.config/hypr/scripts/apply-gtk-theme || true
-cursor_theme=$(sed -n 's/^env = XCURSOR_THEME,//p' ~/.config/hypr/cursor.conf)
-cursor_size=$(sed -n 's/^env = XCURSOR_SIZE,//p' ~/.config/hypr/cursor.conf)
+cursor_theme=$(sed -n 's/^hl.env("XCURSOR_THEME", "\(.*\)")$/\1/p' ~/.config/hypr/cursor.lua)
+cursor_size=$(sed -n 's/^hl.env("XCURSOR_SIZE", "\(.*\)")$/\1/p' ~/.config/hypr/cursor.lua)
 gsettings set org.gnome.desktop.interface cursor-theme "${cursor_theme:-Adwaita}"
 gsettings set org.gnome.desktop.interface cursor-size "${cursor_size:-24}"
 ~/.config/hypr/scripts/appearance dark >/dev/null 2>&1 || true
@@ -147,7 +152,8 @@ note "dark mode, Papirus icons, Inter font, ${cursor_theme:-Adwaita} cursor"
 # ── 9. Apply now if we're already in Hyprland ──────────────────────
 if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   step "Reloading the running Hyprland session"
-  hyprctl reload >/dev/null || true
+  # full-reset: switches a session that was started with an old hyprland.conf over to hyprland.lua
+  hyprctl reload full-reset >/dev/null || true
   ~/.config/hypr/scripts/bars restart || true
 fi
 

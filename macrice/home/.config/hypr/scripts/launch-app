@@ -14,7 +14,7 @@ result=$XDG_RUNTIME_DIR/launcher.$LAUNCHER_ID
     # (comm, not /proc/pid/exe: KeePassXC makes that unreadable; comm is ≤15 chars)
     [[ $pid && $(</proc/$pid/comm) == "$(basename "$1" | cut -c1-15)" ]] || continue
     ws=$(hyprctl -j activeworkspace | jq -r .id)
-    exec hyprctl --batch "dispatch movetoworkspace $ws,address:$addr; dispatch focuswindow address:$addr"
+    exec hyprctl --batch "dispatch hl.dsp.window.move({ workspace = $ws, window = 'address:$addr' }); dispatch hl.dsp.focus({ window = 'address:$addr' })"
   done <<<"$hidden"
   exec uwsm-app -- "$@"
 ) </dev/null >/dev/null 2>&1 &

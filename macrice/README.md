@@ -46,7 +46,7 @@ reproduces exactly what you have now.
 
 | What | Where |
 |---|---|
-| Hyprland (keys, rules, look) | `~/.config/hypr/` · shortcuts in `bindings.conf` |
+| Hyprland (keys, rules, look) | `~/.config/hypr/` (Lua config, Hyprland 0.55+) · shortcuts in `bindings.lua` |
 | Menu bar, dock, dropdowns, Settings | `~/.config/quickshell/` · colours in `common/Theme.qml` |
 | Helper scripts | `~/.config/hypr/scripts/` |
 | Terminal | `~/.config/kitty/` |

@@ -7,17 +7,18 @@ theme=$1 size=$2
 hyprctl setcursor "$theme" "$size" >/dev/null                 # compositor + XWayland, live
 # Hyprland keeps showing the old image until the cursor is redrawn: hide/show + 1px nudge
 pos=$(hyprctl cursorpos | tr -d ' ')
-hyprctl --batch "keyword cursor:invisible true; keyword cursor:invisible false; dispatch movecursor $(( ${pos%,*} + 1 )) ${pos#*,}; dispatch movecursor ${pos%,*} ${pos#*,}" >/dev/null
+x=${pos%,*} y=${pos#*,}
+hyprctl --batch "eval hl.config({ cursor = { invisible = true } }); eval hl.config({ cursor = { invisible = false } }); dispatch hl.dsp.cursor.move({ x = $(( x + 1 )), y = $y }); dispatch hl.dsp.cursor.move({ x = $x, y = $y })" >/dev/null
 systemctl --user set-environment XCURSOR_THEME="$theme" XCURSOR_SIZE="$size" HYPRCURSOR_SIZE="$size"
 dbus-update-activation-environment XCURSOR_THEME="$theme" XCURSOR_SIZE="$size" 2>/dev/null
 
-# Remember for the next login (sourced by hyprland.conf)
-cat > ~/.config/hypr/cursor.conf <<CONF
-# Written by scripts/cursor-apply (System Settings / GTK Settings). Don't edit by hand.
-env = XCURSOR_THEME,$theme
-env = XCURSOR_SIZE,$size
-env = HYPRCURSOR_SIZE,$size
-CONF
+# Remember for the next login (loaded by hyprland.lua)
+cat > ~/.config/hypr/cursor.lua <<LUA
+-- Written by scripts/cursor-apply (System Settings / GTK Settings). Don't edit by hand.
+hl.env("XCURSOR_THEME", "$theme")
+hl.env("XCURSOR_SIZE", "$size")
+hl.env("HYPRCURSOR_SIZE", "$size")
+LUA
 
 # Old X11 apps, and KDE/Qt apps
 mkdir -p ~/.icons/default

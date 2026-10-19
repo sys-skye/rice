@@ -34,16 +34,13 @@ makoctl reload
 # Window borders
 if [[ $mode == dark ]]; then border="rgba(ffffff30)"; inactive="rgba(ffffff12)"; bg="rgb(111122)"
 else border="rgba(00000026)"; inactive="rgba(00000012)"; bg="rgb(e8ecf6)"; fi
-cat > ~/.config/hypr/appearance.conf <<CONF
-# Written by the Appearance switch (scripts/appearance). ${mode^} mode.
-general {
-    col.active_border = $border
-    col.inactive_border = $inactive
-}
-misc {
-    background_color = $bg
-}
-CONF
+cat > ~/.config/hypr/appearance.lua <<LUA
+-- Written by the Appearance switch (scripts/appearance). ${mode^} mode.
+hl.config({
+    general = { col = { active_border = "$border", inactive_border = "$inactive" } },
+    misc = { background_color = "$bg" },
+})
+LUA
 
 # Wallpaper (lock screen uses the same file)
 wp=~/Pictures/Wallpapers

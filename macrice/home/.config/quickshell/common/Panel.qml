@@ -29,7 +29,12 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "dropdown"
-    WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // Appear without keyboard focus and allow it a moment later: Hyprland gives a layer that
+    // maps with focus enabled the *pointer* focus too, so clicking its bar icon again without
+    // moving the mouse went to this panel (outside it, so nowhere) instead of closing it.
+    property bool focusable: false
+    WlrLayershell.keyboardFocus: visible && focusable ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    Timer { id: focusDelay; interval: 150; onTriggered: root.focusable = root.visible }
 
     implicitWidth: panelWidth
     implicitHeight: column.implicitHeight + padding * 2 + 6
@@ -50,6 +55,8 @@ PanelWindow {
         visible = wanted
     }
     onVisibleChanged: {
+        focusable = false
+        if (visible) focusDelay.restart()
         if (visible) { bg.opacity = 0; bg.scale = 0.97; showAnim.restart(); keys.forceActiveFocus(); opened() }
         else if (wanted) Ui.closed(name)   // hidden by something other than Ui (e.g. the compositor)
     }

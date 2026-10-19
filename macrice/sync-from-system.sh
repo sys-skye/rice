@@ -23,7 +23,7 @@ rsync -a "$HOME/Pictures/Wallpapers/sequoia-dark.jpg" "$HOME/Pictures/Wallpapers
 ln -sfn sequoia-dark.jpg "$dst/Pictures/Wallpapers/current.jpg"
 
 # Machine-specific bits that shouldn't travel
-sed -i 's|^# │  Old Omarchy setup:.*│$|# │  Installed with macrice (see ~/macrice/README.md)       │|' "$dst/.config/hypr/hyprland.conf"
+sed -i 's|^-- │  Old Omarchy setup:.*│$|-- │  Installed with macrice (see ~/macrice/README.md)       │|' "$dst/.config/hypr/hyprland.lua"
 cat > "$dst/.config/uwsm/env" <<'ENV'
 # Environment for the uwsm-managed Hyprland session
 export PATH=$HOME/.local/bin:$PATH

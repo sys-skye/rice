@@ -18,7 +18,8 @@ Panel {
     required property string appName
 
     readonly property var ipc: window?.lastIpcObject ?? ({})
-    readonly property string addr: ipc.address ? "address:" + ipc.address : ""
+    // Lua selector for this window (Hyprland.dispatch takes Lua: hl.dsp.window.close({ window = … }))
+    readonly property string addr: ipc.address ? "window = 'address:" + ipc.address + "'" : ""
     readonly property bool floating: ipc.floating ?? false
     readonly property string appClass: ipc.class ?? ""
 
@@ -42,10 +43,10 @@ Panel {
     }
     MenuSeparator { visible: root.entry !== null }
 
-    MenuItem { text: root.floating ? "Tile Window" : "Float Window"; shortcut: "⌥⌘F"; onClicked: root.dispatch("togglefloating " + root.addr) }
-    MenuItem { text: "Enter Full Screen"; shortcut: "⌃⌘F"; onClicked: root.dispatch("fullscreen 0") }
+    MenuItem { text: root.floating ? "Tile Window" : "Float Window"; shortcut: "⌥⌘F"; onClicked: root.dispatch("hl.dsp.window.float({ action = 'toggle', " + root.addr + " })") }
+    MenuItem { text: "Enter Full Screen"; shortcut: "⌃⌘F"; onClicked: root.dispatch("hl.dsp.window.fullscreen({ mode = 'fullscreen' })") }
     MenuItem { text: "Minimize"; shortcut: "⌘M"; onClicked: { Ui.openPanel = ""; Ui.run(Settings.scripts + "/minimize") } }
-    MenuItem { text: "Pin to All Spaces"; visible: root.floating; checked: root.ipc.pinned ?? false; onClicked: root.dispatch("pin " + root.addr) }
+    MenuItem { text: "Pin to All Spaces"; visible: root.floating; checked: root.ipc.pinned ?? false; onClicked: root.dispatch("hl.dsp.window.pin({ " + root.addr + " })") }
 
     Item {
         width: parent.width
@@ -100,14 +101,14 @@ Panel {
                         text: modelData.name === "eDP-1" ? "MacBook" : (modelData.lastIpcObject?.model || modelData.name).replace(/^DELL /, "Dell ")
                         font.pixelSize: 12
                     }
-                    onClicked: root.dispatch("movewindow mon:" + modelData.name)
+                    onClicked: root.dispatch("hl.dsp.window.move({ monitor = '" + modelData.name + "', " + root.addr + " })")
                 }
             }
         }
     }
 
     MenuSeparator {}
-    MenuItem { text: "Close Window"; shortcut: "⌘Q"; onClicked: root.dispatch("closewindow " + root.addr) }
+    MenuItem { text: "Close Window"; shortcut: "⌘Q"; onClicked: root.dispatch("hl.dsp.window.close({ " + root.addr + " })") }
     MenuItem {
         text: "Quit " + root.appName
         destructive: true
@@ -116,7 +117,7 @@ Panel {
         onClicked: {
             Ui.openPanel = ""
             Ui.run("hyprctl clients -j | jq -r --arg c '" + root.appClass.replace(/'/g, "") + "' '.[] | select(.class == $c) | .address'"
-                      + " | while read -r a; do hyprctl dispatch closewindow address:$a; done")
+                      + " | while read -r a; do hyprctl dispatch \"hl.dsp.window.close({ window = 'address:$a' })\"; done")
         }
     }
 }

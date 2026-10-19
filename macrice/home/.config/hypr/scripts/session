@@ -103,16 +103,21 @@ def watch():
             due = None
 
 
+def lua(text):
+    """A Lua string literal (Space names can contain anything)."""
+    return json.dumps(text)
+
+
 def place(win, c):
     addr = f"address:{c['address']}"
     ws = win["workspace"]
     target = ws if ws.isdigit() or ws.startswith("special:") else "name:" + ws
-    cmds = [f"dispatch movetoworkspacesilent {target},{addr}"]
+    cmds = [f"dispatch hl.dsp.window.move({{ workspace = {lua(target)}, follow = false, window = '{addr}' }})"]
     if win["floating"] != c["floating"]:
-        cmds.append(f"dispatch togglefloating {addr}")
+        cmds.append(f"dispatch hl.dsp.window.float({{ action = 'toggle', window = '{addr}' }})")
     if win["floating"]:
-        cmds += [f"dispatch resizewindowpixel exact {win['size'][0]} {win['size'][1]},{addr}",
-                 f"dispatch movewindowpixel exact {win['at'][0]} {win['at'][1]},{addr}"]
+        cmds += [f"dispatch hl.dsp.window.resize({{ x = {win['size'][0]}, y = {win['size'][1]}, window = '{addr}' }})",
+                 f"dispatch hl.dsp.window.move({{ x = {win['at'][0]}, y = {win['at'][1]}, window = '{addr}' }})"]
     hypr("--batch", "; ".join(cmds))
 
 
@@ -144,7 +149,7 @@ def restore():
             pending.remove(win)
             seen.add(c["address"])
     active = state.get("active", "1")
-    hypr("dispatch", "workspace", active if active.isdigit() else "name:" + active)
+    hypr("dispatch", f"hl.dsp.focus({{ workspace = {lua(active if active.isdigit() else 'name:' + active)} }})")
 
 
 cmd = sys.argv[1] if len(sys.argv) > 1 else ""

@@ -68,7 +68,7 @@ PanelWindow {
     function go(t) {
         close()
         const addr = t.lastIpcObject?.address
-        if (addr) Hyprland.dispatch("focuswindow address:" + addr)
+        if (addr) Hyprland.dispatch("hl.dsp.focus({ window = 'address:" + addr + "' })")
         else t.wayland?.activate()
     }
 

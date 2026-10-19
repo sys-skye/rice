@@ -34,6 +34,14 @@ Scope {
     property bool spaceShown: false             // is the "dropdown" Space visible?
     property bool busy: false                   // an animation is running
 
+    // cursor:no_warps as configured (opening flips it on briefly)
+    property bool noWarps: false
+    Process {
+        running: true
+        command: ["hyprctl", "getoption", "cursor:no_warps", "-j"]
+        stdout: StdioCollector { onStreamFinished: { try { const o = JSON.parse(text); root.noWarps = o.bool ?? o.int === 1 } catch (e) {} } }
+    }
+
     function exists() { return Hyprland.toplevels.values.some(t => t.wayland?.appId === "dropdown-term") }
     function toggle() { spaceShown ? hide() : show() }
 
@@ -43,9 +51,10 @@ Scope {
         // Always open at the original size, right under the notch (floating: size and
         // position are ignored if it was switched to tiled with ⌥⌘F)
         windowRect = defaultRect
-        Hyprland.dispatch("setfloating class:^(dropdown-term)$")
-        Hyprland.dispatch("resizewindowpixel exact " + windowRect.width + " " + windowRect.height + ",class:^(dropdown-term)$")
-        Hyprland.dispatch("movewindowpixel exact " + windowRect.x + " " + windowRect.y + ",class:^(dropdown-term)$")
+        const term = "window = 'class:^(dropdown-term)$'"
+        Hyprland.dispatch("hl.dsp.window.float({ action = 'on', " + term + " })")
+        Hyprland.dispatch("hl.dsp.window.resize({ x = " + Math.round(windowRect.width) + ", y = " + Math.round(windowRect.height) + ", " + term + " })")
+        Hyprland.dispatch("hl.dsp.window.move({ x = " + Math.round(windowRect.x) + ", y = " + Math.round(windowRect.y) + ", " + term + " })")
         shape.collapse()
         shape.opacity = 1
         grow.restart()
@@ -84,7 +93,9 @@ Scope {
         target: Hyprland
         function onRawEvent(event) {
             if (event.name === "activespecial") {
-                root.spaceShown = event.data.startsWith("special:dropdown,")
+                // only the built-in screen's Space counts: that's where it lives
+                const [name, mon] = event.data.split(",")
+                if (mon === root.screen?.name) root.spaceShown = name === "special:dropdown"
             } else if (event.name === "activewindow" && root.spaceShown && !root.busy) {
                 const cls = event.data.split(",")[0]
                 if (cls && cls !== "dropdown-term") root.hide()
@@ -109,10 +120,12 @@ Scope {
             SequentialAnimation {
                 PauseAnimation { duration: root.growMs - 180 }
                 ScriptAction {
-                    script: {
-                        Hyprland.dispatch("togglespecialworkspace dropdown")
-                        Hyprland.dispatch("focuswindow class:^(dropdown-term)$")
-                    }
+                    // Hyprland opens special Spaces on the focused screen, so focus the
+                    // built-in one first (without yanking the cursor over there)
+                    script: Quickshell.execDetached(["hyprctl", "--batch",
+                        "eval hl.config({ cursor = { no_warps = true } }); dispatch hl.dsp.focus({ monitor = '" + root.screen?.name + "' })"
+                        + "; dispatch hl.dsp.workspace.toggle_special('dropdown'); dispatch hl.dsp.focus({ window = 'class:^(dropdown-term)$' })"
+                        + "; eval hl.config({ cursor = { no_warps = " + root.noWarps + " } })"])
                 }
             }
         }
@@ -128,7 +141,7 @@ Scope {
     SequentialAnimation {
         id: shrink
         NumberAnimation { target: shape; property: "opacity"; to: 1; duration: 110; easing.type: Easing.OutQuad }
-        ScriptAction { script: Hyprland.dispatch("togglespecialworkspace dropdown") }  // fades out under the shape
+        ScriptAction { script: Hyprland.dispatch("hl.dsp.workspace.toggle_special('dropdown')") }  // fades out under the shape
         ParallelAnimation {
             NumberAnimation { target: shape; property: "bodyH"; to: root.notchRect.height; duration: root.shrinkMs; easing.type: Easing.InBack; easing.overshoot: 0.6 }
             SequentialAnimation {

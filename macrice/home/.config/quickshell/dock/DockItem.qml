@@ -44,7 +44,7 @@ Item {
         if (tops.length === 0 && item.hiddenToplevels.length > 0) {
             const ws = Hyprland.focusedWorkspace?.id ?? 1
             for (const h of Hyprland.toplevels.values.filter(h => item.hiddenToplevels.includes(h.wayland)))
-                Hyprland.dispatch(`movetoworkspace ${ws},address:${h.lastIpcObject?.address}`)
+                Hyprland.dispatch(`hl.dsp.window.move({ workspace = ${ws}, window = 'address:${h.lastIpcObject?.address}' })`)
             return
         }
         if (tops.length === 0) return launch()
@@ -137,7 +137,12 @@ Item {
         margins.bottom: root.dockWindow.size + 40
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "dropdown"
-        WlrLayershell.keyboardFocus: visible ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        // Allow keyboard focus only once it's on screen (see Panel.qml: mapping with it on
+        // also grabs the pointer, so the next click without moving the mouse is lost)
+        property bool focusable: false
+        WlrLayershell.keyboardFocus: visible && focusable ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+        onVisibleChanged: { focusable = false; if (visible) menuFocusDelay.restart() }
+        Timer { id: menuFocusDelay; interval: 150; onTriggered: menu.focusable = menu.visible }
         implicitWidth: 230
         implicitHeight: menuCol.implicitHeight + 10
 

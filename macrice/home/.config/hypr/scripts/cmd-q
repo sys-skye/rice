@@ -7,7 +7,7 @@ KEEP_RUNNING='^(net\.thunderbird\.Thunderbird|thunderbird|org\.keepassxc\.KeePas
 class=$(hyprctl -j activewindow | jq -r '.class // empty')
 [[ $class ]] || exit 0
 if [[ $class =~ $KEEP_RUNNING ]]; then
-  hyprctl dispatch movetoworkspacesilent special:hidden
+  hyprctl dispatch 'hl.dsp.window.move({ workspace = "special:hidden", follow = false })'
 else
-  hyprctl dispatch killactive
+  hyprctl dispatch 'hl.dsp.window.close()'
 fi

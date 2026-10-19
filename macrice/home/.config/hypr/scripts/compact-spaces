@@ -20,7 +20,6 @@ _loader.exec_module(space)
 
 EVENTS = (b"destroyworkspace>>", b"closewindow>>", b"movewindow>>", b"moveworkspace>>",
           b"createworkspace>>", b"monitoradded>>", b"monitorremoved>>")
-RULE_EVENTS = (b"configreloaded>>", b"monitoradded>>")
 
 
 def hypr(*args):
@@ -32,16 +31,6 @@ def query(what):
         return json.loads(hypr(what, "-j"))
     except json.JSONDecodeError:
         return [] if what != "activewindow" else {}
-
-
-def pin_blocks():
-    """Workspace rules tying each display's block of ids to it, so new Spaces open on
-    the right screen. Hyprland only honours exact ids here (not r[a-b] ranges), and a
-    config reload drops them, so they're (re)applied from here."""
-    monitors = query("monitors")
-    rules = [f"keyword workspace {i}, monitor:{m['name']}"
-             for m in monitors for b in [space.base(m["name"], monitors)] for i in range(b + 1, b + 100)]
-    hypr("--batch", "; ".join(rules))
 
 
 def compact():
@@ -74,19 +63,22 @@ def compact():
     cmds = []
     for c in query("clients"):
         if c["workspace"]["id"] in ready:
-            cmds.append(f"dispatch movetoworkspacesilent {ready[c['workspace']['id']][0]},address:{c['address']}")
+            new = ready[c["workspace"]["id"]][0]
+            cmds.append(f"dispatch hl.dsp.window.move({{ workspace = {new}, follow = false, window = 'address:{c['address']}' }})")
     # Displays showing a renumbered Space switch to its new number (no slide animation)
     follow = [(mon, ready[old][0]) for old, mon in shown.items() if old in ready]
     if follow:
         for mon, new in follow:
-            cmds += [f"dispatch focusmonitor {mon}", f"dispatch workspace {new}"]
+            cmds += [f"dispatch hl.dsp.focus({{ monitor = '{mon}' }})", f"dispatch hl.dsp.focus({{ workspace = {new} }})"]
         if focused_mon:
-            cmds.append(f"dispatch focusmonitor {focused_mon}")
+            cmds.append(f"dispatch hl.dsp.focus({{ monitor = '{focused_mon}' }})")
         if focused_win:
-            cmds.append(f"dispatch focuswindow address:{focused_win}")
-        animations = "int: 1" in hypr("getoption", "animations:enabled")
+            cmds.append(f"dispatch hl.dsp.focus({{ window = 'address:{focused_win}' }})")
+        option = hypr("getoption", "animations:enabled")
+        animations = "bool: true" in option or "int: 1" in option
         if animations:
-            cmds = ["keyword animations:enabled 0", *cmds, "keyword animations:enabled 1"]
+            cmds = ["eval hl.config({ animations = { enabled = false } })", *cmds,
+                    "eval hl.config({ animations = { enabled = true } })"]
     if cmds:
         hypr("--batch", "; ".join(cmds))
 
@@ -96,7 +88,6 @@ def watch():
     sock = socket.socket(socket.AF_UNIX)
     sock.connect(path)
     sock.settimeout(0.15)
-    pin_blocks()
     compact()
     due, buf = None, b""
     while True:
@@ -106,8 +97,6 @@ def watch():
                 return
             buf += data
             *lines, buf = buf.split(b"\n")
-            if any(l.startswith(RULE_EVENTS) for l in lines):
-                pin_blocks()
             if any(l.startswith(EVENTS) for l in lines):
                 due = time.monotonic() + 0.15  # let bursts (closing several windows) settle
         except socket.timeout:

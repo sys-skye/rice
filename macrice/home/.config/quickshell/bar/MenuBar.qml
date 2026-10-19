@@ -32,9 +32,10 @@ PanelWindow {
 
     // Focused app
     readonly property var win: Hyprland.activeToplevel
-    // (a focused window in a special Space — ⌘⇧M minimized, ⌘` terminal — is on screen too)
+    // (a focused window in a special Space that's open — ⌘⇧M minimized, ⌘` terminal — is on screen too,
+    //  but not one ⌘Q just hid in special:hidden, which Hyprland may still report as active)
     readonly property bool hasWindow: win !== null && win.workspace !== null
-        && (win.workspace?.id === Hyprland.focusedWorkspace?.id || (win.workspace?.name ?? "").startsWith("special:"))
+        && (win.workspace?.id === Hyprland.focusedWorkspace?.id || SpecialSpaces.isShown(win.workspace?.name ?? ""))
     readonly property string appId: !hasWindow ? "" : (win.wayland?.appId || win.lastIpcObject?.class || "")
     readonly property var entry: appId ? DesktopEntries.heuristicLookup(appId) : null
     readonly property string appName: !hasWindow ? "Desktop"
@@ -106,7 +107,7 @@ PanelWindow {
                         color: current ? Theme.text : ws && ws.toplevels.values.length > 0 ? Theme.fg(0.6) : Theme.fg(0.28)
                         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
-                    onClicked: Hyprland.dispatch("workspace " + modelData)
+                    onClicked: Hyprland.dispatch("hl.dsp.focus({ workspace = " + modelData + " })")
                 }
             }
         }

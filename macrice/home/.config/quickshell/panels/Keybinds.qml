@@ -4,8 +4,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.common
 
-// ⌘/ — searchable cheat sheet built from ~/.config/hypr/bindings.conf
-// (sections come from the "# ── Name ──" comment lines in that file).
+// ⌘/ — searchable cheat sheet built from ~/.config/hypr/bindings.lua
+// (sections come from the "-- ── Name ──" comment lines in that file).
 PanelWindow {
     id: root
     screen: Quickshell.screens[0]
@@ -51,20 +51,24 @@ PanelWindow {
         const out = []
         let cur = null
         for (const line of text.split("\n")) {
-            const head = line.match(/^#\s*──\s*(.+?)\s*[─(]/)
+            const head = line.match(/^--\s*──\s*(.+?)\s*[─(]/)
             if (head) { cur = { name: head[1], binds: [] }; out.push(cur); continue }
-            if (/^#\s*Also:.*swipe/i.test(line) && cur) cur.binds.push({ keys: "3-finger swipe", desc: "Switch space" })
-            const b = line.match(/^bind\w*\s*=\s*([^,]*),\s*([^,]+),\s*([^,]*),/)
-            if (!b || !b[3].trim() || /^XF86/.test(b[2].trim())) continue
+            if (/^--\s*Also:.*swipe/i.test(line) && cur) cur.binds.push({ keys: "3-finger swipe", desc: "Switch space" })
+            // bind("SUPER + SHIFT + M", "Description", …)
+            const b = line.match(/^\s*bind\("([^"]+)",\s*"([^"]*)"/)
+            if (!b || !b[2].trim()) continue
+            const parts = b[1].split("+").map(x => x.trim())
+            const key = parts.pop()
+            if (/^XF86/.test(key)) continue
             if (!cur) { cur = { name: "General", binds: [] }; out.push(cur) }
-            cur.binds.push({ keys: prettyKeys(b[1], b[2]), desc: b[3].trim() })
+            cur.binds.push({ keys: prettyKeys(parts.join(" "), key), desc: b[2].trim() })
         }
         return out.filter(s => s.binds.length > 0)
     }
 
     Process {
         id: reader
-        command: ["cat", Quickshell.env("HOME") + "/.config/hypr/bindings.conf"]
+        command: ["cat", Quickshell.env("HOME") + "/.config/hypr/bindings.lua"]
         stdout: StdioCollector { onStreamFinished: root.sections = root.parse(text) }
     }
 

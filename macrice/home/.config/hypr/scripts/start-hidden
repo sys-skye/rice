@@ -8,7 +8,7 @@ setsid -f uwsm-app -- "$@" >/dev/null 2>&1
 for _ in $(seq 120); do
   addr=$(hyprctl -j clients | jq -r --arg c "$class" '.[] | select(.class == $c and .mapped) | .address' | head -1)
   if [[ $addr ]]; then
-    hyprctl dispatch movetoworkspacesilent "special:hidden,address:$addr" >/dev/null
+    hyprctl dispatch "hl.dsp.window.move({ workspace = 'special:hidden', follow = false, window = 'address:$addr' })" >/dev/null
     exit 0
   fi
   sleep 0.5

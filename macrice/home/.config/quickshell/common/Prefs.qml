@@ -56,14 +56,14 @@ Singleton {
               + "general {\n"
               + "    lock_cmd = pidof hyprlock || hyprlock          # lock screen\n"
               + "    before_sleep_cmd = loginctl lock-session        # lock before suspend\n"
-              + "    after_sleep_cmd = hyprctl dispatch dpms on      # turn the display back on after resume\n"
+              + "    after_sleep_cmd = hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'   # turn the display back on after resume\n"
               + "    inhibit_sleep = 3                               # wait until screen is locked\n"
               + "}\n"
         if (off > 0) {
             t += "\n# Dim the screen 30 seconds before it turns off\nlistener {\n    timeout = " + Math.max(30, off - 30)
                + "\n    on-timeout = brightnessctl -s -c backlight set 10%\n    on-resume = brightnessctl -r -c backlight\n}\n"
                + "\n# Turn the display off\nlistener {\n    timeout = " + off
-               + "\n    on-timeout = hyprctl dispatch dpms off\n    on-resume = hyprctl dispatch dpms on\n}\n"
+               + "\n    on-timeout = hyprctl dispatch 'hl.dsp.dpms({ action = \"off\" })'\n    on-resume = hyprctl dispatch 'hl.dsp.dpms({ action = \"on\" })'\n}\n"
             if (lockDelay >= 0)
                 t += "\n# Require password\nlistener {\n    timeout = " + (off + lockDelay * 60)
                    + "\n    on-timeout = loginctl lock-session\n}\n"

@@ -1,31 +1,36 @@
 #!/usr/bin/python3 -I
-"""Bring apps that ⌘Q hid (special:hidden) back when something activates them.
+"""Bring apps that ⌘Q hid (special:hidden) or ⌘M minimized (special:minimized)
+back when something activates them.
 
 Opening Thunderbird/KeePassXC again (search, a notification, the browser asking
-KeePassXC to unlock) makes Hyprland focus the hidden window, which would show
-the whole hidden Space as an overlay. Instead, move that window to the Space
-you're on and keep the hidden Space hidden.
+KeePassXC to unlock), clicking a minimized app in the dock or a link opening a
+minimized Firefox makes Hyprland focus the hidden window, which would show the
+whole hidden Space as an overlay. Instead, move that window to the Space you're
+on and keep the hidden Space hidden. ⌘⇧M (show minimized windows on purpose)
+leaves a marker file so that one overlay stays.
 
   hidden-apps watch    (exec-once in autostart.conf)
 """
-import json, os, socket, subprocess
+import json, os, socket, subprocess, time
+
+PEEK = f"{os.environ.get('XDG_RUNTIME_DIR', '/tmp')}/minimized-peek"  # written by ⌘⇧M
 
 
 def hypr(*args):
     return subprocess.run(["hyprctl", *args], capture_output=True, text=True).stdout
 
 
-def bring_back(monitor):
+def bring_back(special, monitor):
     try:
         win = json.loads(hypr("activewindow", "-j"))
         mon = next(m for m in json.loads(hypr("monitors", "-j")) if m["name"] == monitor)
     except (json.JSONDecodeError, StopIteration):
         return
-    cmds = ["dispatch togglespecialworkspace hidden"]
-    if win.get("workspace", {}).get("name") == "special:hidden":
+    cmds = [f"dispatch hl.dsp.workspace.toggle_special('{special.removeprefix('special:')}')"]
+    if win.get("workspace", {}).get("name") == special:
         ws = mon["activeWorkspace"]["id"]
-        cmds += [f"dispatch movetoworkspace {ws},address:{win['address']}",
-                 f"dispatch focuswindow address:{win['address']}"]
+        cmds += [f"dispatch hl.dsp.window.move({{ workspace = {ws}, window = 'address:{win['address']}' }})",
+                 f"dispatch hl.dsp.focus({{ window = 'address:{win['address']}' }})"]
     hypr("--batch", "; ".join(cmds))
 
 
@@ -42,8 +47,21 @@ def watch():
         *lines, buf = buf.split(b"\n")
         for line in lines:
             # activespecial>>special:hidden,eDP-1  (shown; empty name = hidden again)
-            if line.startswith(b"activespecial>>special:hidden,"):
-                bring_back(line.decode().split(",", 1)[1])
+            if line.startswith((b"activespecial>>special:hidden,", b"activespecial>>special:minimized,")):
+                special, monitor = line.decode().removeprefix("activespecial>>").split(",", 1)
+                if special == "special:minimized" and peeking():
+                    continue
+                bring_back(special, monitor)
+
+
+def peeking():
+    """⌘⇧M opened the minimized Space on purpose (within the last second)."""
+    try:
+        fresh = time.time() - os.path.getmtime(PEEK) < 1
+        os.remove(PEEK)
+        return fresh
+    except OSError:
+        return False
 
 
 if __name__ == "__main__":

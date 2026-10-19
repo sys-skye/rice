@@ -4,12 +4,12 @@ import Quickshell
 import Quickshell.Io
 
 // Trackpad / mouse / keyboard settings for the System Settings window.
-// Changes apply live (hyprctl keyword) and are saved to ~/.config/hypr/settings.conf,
-// which hyprland.conf sources last so it overrides input.conf.
+// Changes apply live (hyprctl eval) and are saved to ~/.config/hypr/settings.lua,
+// which hyprland.lua loads last so it overrides input.lua.
 Singleton {
     id: root
 
-    readonly property string confPath: Quickshell.env("HOME") + "/.config/hypr/settings.conf"
+    readonly property string confPath: Quickshell.env("HOME") + "/.config/hypr/settings.lua"
     readonly property string jsonPath: Quickshell.statePath("input-settings.json")
 
     // Trackpad
@@ -68,8 +68,19 @@ Singleton {
     function extExact() { const p = extPixels(); return wholePixels(p[0], p[1], extScale) }
     // In-between scales don't split the screen into whole pixels, so Hyprland's check has to be off for them
     function scaleChecksOff() { return !exactScale(displayScale) || !extExact() }
-    function keyword(k, v) { Quickshell.execDetached(["hyprctl", "keyword", k, String(v)]) }
-    function b(v) { return v ? 1 : 0 }
+    // Hyprland's config is Lua: values and tables are written as Lua source
+    function lua(v) {
+        if (typeof v === "boolean" || typeof v === "number") return String(v)
+        if (typeof v === "string") return JSON.stringify(v)
+        return "{ " + Object.keys(v).map(k => k + " = " + lua(v[k])).join(", ") + " }"
+    }
+    function evalLua(code) { Quickshell.execDetached(["hyprctl", "eval", code]) }
+    // set("input.touchpad.natural_scroll", true) → hl.config({ input = { touchpad = { natural_scroll = true } } })
+    function nested(path, value) {
+        return path.split(".").reverse().reduce((inner, key) => ({ [key]: inner }), value)
+    }
+    function cfg(path, value) { evalLua("hl.config(" + lua(nested(path, value)) + ")") }
+    function num(v, digits) { return Number(Number(v).toFixed(digits)) }
     // xkb options for the Caps Lock choice (+ ⌃Space switches layouts when there are several)
     function kbOptions() {
         const caps = { compose: "compose:caps", escape: "caps:escape", ctrl: "ctrl:nocaps", none: "caps:none", caps: "caps:capslock" }[capsLock] ?? ""
@@ -79,32 +90,31 @@ Singleton {
     function set(prop, value) {
         root[prop] = value
         switch (prop) {
-        case "sensitivity": keyword("input:sensitivity", value.toFixed(2)); break
-        case "accel": keyword("input:accel_profile", value); break
-        case "naturalScroll": keyword("input:touchpad:natural_scroll", b(value)); break
-        case "tapToClick": keyword("input:touchpad:tap-to-click", b(value)); break
-        case "tapAndDrag": keyword("input:touchpad:tap-and-drag", b(value)); break
-        case "twoFingerRightClick": keyword("input:touchpad:clickfinger_behavior", b(value)); break
-        case "disableWhileTyping": keyword("input:touchpad:disable_while_typing", b(value)); break
-        case "scrollFactor": keyword("input:touchpad:scroll_factor", value.toFixed(2)); break
-        case "mouseScrollFactor": keyword("input:scroll_factor", value.toFixed(2)); break
-        case "mouseNaturalScroll": keyword("input:natural_scroll", b(value)); break
-        case "repeatRate": keyword("input:repeat_rate", value); break
-        case "repeatDelay": keyword("input:repeat_delay", value); break
+        case "sensitivity": cfg("input.sensitivity", num(value, 2)); break
+        case "accel": cfg("input.accel_profile", value); break
+        case "naturalScroll": cfg("input.touchpad.natural_scroll", value); break
+        case "tapToClick": cfg("input.touchpad.tap_to_click", value); break
+        case "tapAndDrag": cfg("input.touchpad.tap_and_drag", value); break
+        case "twoFingerRightClick": cfg("input.touchpad.clickfinger_behavior", value); break
+        case "disableWhileTyping": cfg("input.touchpad.disable_while_typing", value); break
+        case "scrollFactor": cfg("input.touchpad.scroll_factor", num(value, 2)); break
+        case "mouseScrollFactor": cfg("input.scroll_factor", num(value, 2)); break
+        case "mouseNaturalScroll": cfg("input.natural_scroll", value); break
+        case "repeatRate": cfg("input.repeat_rate", value); break
+        case "repeatDelay": cfg("input.repeat_delay", value); break
         case "kbLayout": case "capsLock":
-            Quickshell.execDetached(["hyprctl", "--batch", "keyword input:kb_layout " + kbLayout + "; keyword input:kb_options " + kbOptions()])
+            evalLua("hl.config(" + lua({ input: { kb_layout: kbLayout, kb_options: kbOptions() } }) + ")")
             break
-        case "swipeDistance": keyword("gestures:workspace_swipe_distance", value); break
-        case "swipeSwitchAt": keyword("gestures:workspace_swipe_cancel_ratio", value.toFixed(2)); break
-        case "swipeFlick": keyword("gestures:workspace_swipe_min_speed_to_force", value); break
-        case "swipeForever": keyword("gestures:workspace_swipe_forever", b(value)); break
-        case "gapsIn": keyword("general:gaps_in", value); break
-        case "gapsOut": keyword("general:gaps_out", value); break
-        case "rounding": keyword("decoration:rounding", value); break
+        case "swipeDistance": cfg("gestures.workspace_swipe_distance", value); break
+        case "swipeSwitchAt": cfg("gestures.workspace_swipe_cancel_ratio", num(value, 2)); break
+        case "swipeFlick": cfg("gestures.workspace_swipe_min_speed_to_force", value); break
+        case "swipeForever": cfg("gestures.workspace_swipe_forever", value); break
+        case "gapsIn": cfg("general.gaps_in", value); break
+        case "gapsOut": cfg("general.gaps_out", value); break
+        case "rounding": cfg("decoration.rounding", value); break
         case "displayScale":
-            Quickshell.execDetached(["hyprctl", "--batch", "keyword debug:disable_scale_checks " + b(scaleChecksOff())
-                                     + "; keyword monitor eDP-1,preferred,auto," + value.toFixed(6)
-                                     + "; keyword monitor " + extMonitorLine()])
+            evalLua("hl.config(" + lua({ debug: { disable_scale_checks: scaleChecksOff() } }) + ") "
+                    + builtinMonitor() + " " + extMonitor())
             break
         case "extMode": case "extScale": case "extPosition": case "extMirror": applyExternal(); break
         }
@@ -115,11 +125,14 @@ Singleton {
         m[name] = Object.assign({ sensitivity: 0, accel: "adaptive" }, m[name] || {})
         m[name][key] = value
         mice = m
-        keyword("device[" + name + "]:" + (key === "accel" ? "accel_profile" : "sensitivity"),
-                key === "accel" ? value : Number(value).toFixed(2))
+        evalLua(deviceLua(name))
         saveTimer.restart()
     }
     function mouse(name) { return Object.assign({ sensitivity: 0, accel: "adaptive" }, mice[name] || {}) }
+    function deviceLua(name) {
+        const m = mouse(name)
+        return "hl.device(" + lua({ name: name, sensitivity: num(m.sensitivity, 2), accel_profile: m.accel }) + ")"
+    }
 
     // Where the external screen goes, in Hyprland's layout coordinates
     function extPositionString() {
@@ -134,52 +147,51 @@ Singleton {
         }
         return lw + "x0"
     }
-    function extMonitorLine() {
-        return extName + "," + (extMode || "preferred") + "," + extPositionString() + "," + extScale.toFixed(6)
-             + (extMirror ? ",mirror,eDP-1" : "")
+    function builtinMonitor() {
+        return "hl.monitor(" + lua({ output: "eDP-1", mode: "preferred", position: "auto", scale: num(displayScale, 6) }) + ")"
+    }
+    function extMonitor() {
+        const m = { output: extName, mode: extMode || "preferred", position: extPositionString(), scale: num(extScale, 6) }
+        if (extMirror) m.mirror = "eDP-1"
+        return "hl.monitor(" + lua(m) + ")"
     }
     function applyExternal() {
-        Quickshell.execDetached(["hyprctl", "--batch", "keyword debug:disable_scale_checks " + b(scaleChecksOff())
-                                 + "; keyword monitor " + extMonitorLine()])
+        evalLua("hl.config(" + lua({ debug: { disable_scale_checks: scaleChecksOff() } }) + ") " + extMonitor())
     }
 
     function confText() {
-        let t = "# Written by System Settings (Apple menu). Edits here get overwritten —\n"
-              + "# change things in the app, or put permanent tweaks in input.conf instead.\n\n"
-              + "input:sensitivity = " + sensitivity.toFixed(2) + "\n"
-              + "input:accel_profile = " + accel + "\n"
-              + "input:scroll_factor = " + mouseScrollFactor.toFixed(2) + "\n"
-              + "input:natural_scroll = " + mouseNaturalScroll + "\n"
-              + "input:repeat_rate = " + repeatRate + "\n"
-              + "input:repeat_delay = " + repeatDelay + "\n"
-              + "input:kb_layout = " + kbLayout + "\n"
-              + "input:kb_options = " + kbOptions() + "\n"
-              + "input:touchpad:natural_scroll = " + naturalScroll + "\n"
-              + "input:touchpad:tap-to-click = " + tapToClick + "\n"
-              + "input:touchpad:tap-and-drag = " + tapAndDrag + "\n"
-              + "input:touchpad:clickfinger_behavior = " + twoFingerRightClick + "\n"
-              + "input:touchpad:disable_while_typing = " + disableWhileTyping + "\n"
-              + "input:touchpad:scroll_factor = " + scrollFactor.toFixed(2) + "\n\n"
-              + "# Tiled windows\n"
-              + "general:gaps_in = " + gapsIn + "\n"
-              + "general:gaps_out = " + gapsOut + "\n"
-              + "decoration:rounding = " + rounding + "\n\n"
-              + "# Three-finger swipe between Spaces\n"
-              + "gestures:workspace_swipe_distance = " + swipeDistance + "\n"
-              + "gestures:workspace_swipe_cancel_ratio = " + swipeSwitchAt.toFixed(2) + "\n"
-              + "gestures:workspace_swipe_min_speed_to_force = " + swipeFlick + "\n"
-              + "gestures:workspace_swipe_forever = " + swipeForever + "\n\n"
-              + (scaleChecksOff() ? "# Allow in-between display scales\ndebug:disable_scale_checks = 1\n\n" : "")
-              + (Math.abs(displayScale - 2) > 0.01 ? "# Built-in display scale\n"
-                 + "monitor = eDP-1, preferred, auto, " + displayScale.toFixed(6) + "\n\n" : "")
-              + "# External display (HDMI): mode, position, scale\nmonitor = " + extMonitorLine().replace(/,/g, ", ") + "\n\n"
-              + "# Terminal scrolling speed on the trackpad\n"
-              + "windowrule = match:class ^(kitty|Alacritty|foot|floating-term)$, scroll_touchpad " + terminalScroll.toFixed(2) + "\n"
-        for (const name of Object.keys(mice)) {
-            const m = mouse(name)
-            t += "\ndevice {\n    name = " + name + "\n    sensitivity = " + Number(m.sensitivity).toFixed(2)
-               + "\n    accel_profile = " + m.accel + "\n}\n"
-        }
+        let t = "-- Written by System Settings (Apple menu). Edits here get overwritten —\n"
+              + "-- change things in the app, or put permanent tweaks in input.lua instead.\n\n"
+              + "hl.config({\n"
+              + "    input = " + lua({
+                    sensitivity: num(sensitivity, 2), accel_profile: accel,
+                    scroll_factor: num(mouseScrollFactor, 2), natural_scroll: mouseNaturalScroll,
+                    repeat_rate: repeatRate, repeat_delay: repeatDelay,
+                    kb_layout: kbLayout, kb_options: kbOptions(),
+                    touchpad: {
+                        natural_scroll: naturalScroll, tap_to_click: tapToClick, tap_and_drag: tapAndDrag,
+                        clickfinger_behavior: twoFingerRightClick, disable_while_typing: disableWhileTyping,
+                        scroll_factor: num(scrollFactor, 2)
+                    }
+                }) + ",\n"
+              + "    -- Tiled windows\n"
+              + "    general = " + lua({ gaps_in: gapsIn, gaps_out: gapsOut }) + ",\n"
+              + "    decoration = " + lua({ rounding: rounding }) + ",\n"
+              + "    -- Three-finger swipe between Spaces\n"
+              + "    gestures = " + lua({
+                    workspace_swipe_distance: swipeDistance, workspace_swipe_cancel_ratio: num(swipeSwitchAt, 2),
+                    workspace_swipe_min_speed_to_force: swipeFlick, workspace_swipe_forever: swipeForever
+                }) + ",\n"
+              + "    -- Allow in-between display scales\n"
+              + "    debug = " + lua({ disable_scale_checks: scaleChecksOff() }) + ",\n"
+              + "})\n\n"
+              + (Math.abs(displayScale - 2) > 0.01 ? "-- Built-in display scale\n" + builtinMonitor() + "\n\n" : "")
+              + "-- External display (HDMI): mode, position, scale\n" + extMonitor() + "\n\n"
+              + "-- Terminal scrolling speed on the trackpad\n"
+              + "hl.window_rule(" + lua({ name: "terminal-scroll", match: { class: "^(kitty|Alacritty|foot|floating-term)$" },
+                                         scroll_touchpad: num(terminalScroll, 2) }) + ")\n"
+        for (const name of Object.keys(mice))
+            t += "\n" + deviceLua(name) + "\n"
         return t
     }
     function save() {
