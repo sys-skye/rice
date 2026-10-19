@@ -44,6 +44,9 @@ Singleton {
     readonly property string mouse: g(0xF037D)
     readonly property string phone: g(0xF011C)
     readonly property string apps: g(0xF003B)
+    readonly property string airdrop: g(0xF0003)
+    readonly property string folder: g(0xF024B)
+    readonly property string close: g(0xF0156)
 
     function wifiIcon(strength) { return wifi[Math.max(0, Math.min(4, Math.round(strength * 4)))] }
     function volumeIcon(vol, muted) {

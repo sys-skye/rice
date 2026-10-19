@@ -34,6 +34,7 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: e => e.button === Qt.RightButton ? root.rightClicked() : root.clicked()
+        // Act on press, like macOS: a tap that drifts a few pixels before release still counts
+        onPressed: e => e.button === Qt.RightButton ? root.rightClicked() : root.clicked()
     }
 }

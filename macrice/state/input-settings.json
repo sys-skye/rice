@@ -14,9 +14,11 @@
   "repeatRate": 40,
   "repeatDelay": 250,
   "trailEnabled": true,
-  "trailLength": 46.18301265495868,
-  "trailStrength": 0.879055559142562,
-  "displayScale": 2,
+  "trailLength": 55.132602660123965,
+  "trailStrength": 0.9795155927169422,
+  "trailType": "blur",
+  "trailColor": "#ffffff",
+  "displayScale": 1.85,
   "swipeDistance": 275,
   "swipeSwitchAt": 0.15000000000000002,
   "swipeFlick": 10,
@@ -25,9 +27,8 @@
   "gapsOut": 4,
   "rounding": 14,
   "extMode": "2560x1440@120.00",
-  "extScale": 1.25,
+  "extScale": 1.4,
   "extPosition": "left",
   "extMirror": false,
-  "mainDisplay": "external",
-  "separateSpaces": false
+  "mainDisplay": "external"
 }

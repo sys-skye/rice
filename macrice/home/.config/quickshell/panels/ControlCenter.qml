@@ -31,6 +31,7 @@ Panel {
         property string subtitle: ""
         property bool on: false
         property bool compact: false
+        property bool airdropIcon: false   // draw the AirDrop mark instead of a glyph
         signal toggled()
         signal opened()
         height: compact ? 44 : 50
@@ -43,7 +44,8 @@ Panel {
             width: 30; height: 30; radius: 15
             color: tile.on ? Theme.accent : Theme.fg(0.14)
             Behavior on color { ColorAnimation { duration: 150 } }
-            Icon { anchors.centerIn: parent; text: tile.icon; size: 15 }
+            Icon { anchors.centerIn: parent; text: tile.icon; size: 15; visible: !tile.airdropIcon }
+            AirDropIcon { anchors.centerIn: parent; size: 17; visible: tile.airdropIcon }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tile.toggled() }
         }
         Column {
@@ -72,14 +74,16 @@ Panel {
     Row {
         width: parent.width
         spacing: 10
+        // Connectivity: Wi-Fi, Bluetooth, AirDrop share one rounded box, like macOS
         Rectangle {
             width: (parent.width - 10) / 2
-            height: 110
+            height: toggles.height
             radius: 12
             color: Theme.tileBg
             Column {
                 anchors.fill: parent
                 anchors.margins: 3
+                spacing: (height - 150) / 2
                 Tile {
                     width: parent.width; color: "transparent"
                     icon: Networking.wifiEnabled ? Glyphs.wifi[4] : Glyphs.wifiOff
@@ -98,9 +102,19 @@ Panel {
                     onToggled: if (root.bt) root.bt.enabled = !root.bt.enabled
                     onOpened: Ui.openPanel = "bluetooth"
                 }
+                Tile {
+                    width: parent.width; color: "transparent"
+                    airdropIcon: true
+                    title: "AirDrop"
+                    subtitle: AirDrop.available ? AirDrop.shortSummary : "Not set up"
+                    on: AirDrop.receiving
+                    onToggled: AirDrop.toggle()
+                    onOpened: Ui.openPanel = "airdrop"
+                }
             }
         }
         Column {
+            id: toggles
             width: (parent.width - 10) / 2
             spacing: 10
             Tile {
@@ -121,18 +135,16 @@ Panel {
                 onToggled: Ui.keepAwake = !Ui.keepAwake
                 onOpened: Ui.keepAwake = !Ui.keepAwake
             }
+            Tile {
+                width: parent.width
+                icon: Theme.isDark ? Glyphs.night : Glyphs.brightness
+                title: "Dark Mode"
+                subtitle: Appearance.mode === "auto" ? (Theme.isDark ? "On · Auto" : "Off · Auto") : (Theme.isDark ? "On" : "Off")
+                on: Theme.isDark
+                onToggled: Appearance.toggle()
+                onOpened: Ui.openSettings("appearance")
+            }
         }
-    }
-
-    Tile {
-        width: parent.width
-        compact: true
-        icon: Theme.isDark ? Glyphs.night : Glyphs.brightness
-        title: "Dark Mode"
-        subtitle: Appearance.mode === "auto" ? (Theme.isDark ? "On · Auto" : "Off · Auto") : (Theme.isDark ? "On" : "Off")
-        on: Theme.isDark
-        onToggled: Appearance.toggle()
-        onOpened: Ui.openSettings("appearance")
     }
 
     Block {

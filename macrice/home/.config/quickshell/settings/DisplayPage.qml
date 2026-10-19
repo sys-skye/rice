@@ -36,15 +36,13 @@ Column {
     readonly property real curHz: InputSettings.extMode ? Number(InputSettings.extMode.split("@")[1]) : (ext?.refreshRate ?? 60)
     readonly property var rates: [...new Set(modes.filter(m => m.res === curRes).map(m => Math.round(m.hz)))].sort((a, b) => b - a)
     readonly property var curWH: curRes ? curRes.split("x").map(Number) : [2560, 1440]
-    // Only scales that divide the screen into whole pixels (Hyprland's rule)
-    readonly property var scales: [1, 1.25, 1.333333, 1.5, 1.6, 2].filter(sc =>
+    // Pixel-exact scales for the current resolution (presets; the slider also allows in-between ones)
+    readonly property var scales: [1, 1.25, 1.333333, 1.5, 1.6, 2, 2.5].filter(sc =>
         Math.abs(curWH[0] / sc - Math.round(curWH[0] / sc)) < 0.01 && Math.abs(curWH[1] / sc - Math.round(curWH[1] / sc)) < 0.01)
     function setMode(res, hz) {
         const m = modes.filter(x => x.res === res).sort((a, b) => Math.abs(a.hz - hz) - Math.abs(b.hz - hz))[0]
         if (!m) return
         InputSettings.set("extMode", m.res + "@" + m.hz.toFixed(2))
-        // keep the scale valid for the new resolution
-        if (!scales.some(sc => Math.abs(sc - InputSettings.extScale) < 0.01)) InputSettings.set("extScale", 1)
     }
 
     // GTK's text scaling factor: GTK apps and Firefox follow it live
@@ -156,12 +154,37 @@ Column {
             }
         }
         SettingRow {
+            id: extScaleRow
             visible: page.ext !== null && !InputSettings.extMirror
             label: "Scale"
-            hint: "Looks like " + Math.round(page.curWH[0] / InputSettings.extScale) + " × " + Math.round(page.curWH[1] / InputSettings.extScale)
+            hint: Math.round(shown * 100) + "% · Looks like " + Math.round(page.curWH[0] / shown) + " × " + Math.round(page.curWH[1] / shown)
+                + (InputSettings.wholePixels(page.curWH[0], page.curWH[1], shown) ? " (sharpest)" : "")
+            // Value under the knob while dragging; the screen only rescales on release
+            property real dragging: -1
+            readonly property real shown: dragging > 0 ? dragging : InputSettings.extScale
+            function snap(v) {
+                v = Math.round(v * 20) / 20                          // 5% steps (multiples of 1/120, as Wayland wants)
+                const exact = page.scales.find(sc => Math.abs(v - sc) < 0.03)
+                return exact ?? v                                    // stick to pixel-exact scales like 133%
+            }
+            SettingSlider {
+                from: 1; to: 2.5; ticks: 4
+                minLabel: "More Space"; maxLabel: "Larger"
+                value: extScaleRow.shown
+                onMoved: v => extScaleRow.dragging = extScaleRow.snap(v)
+                onReleased: v => {
+                    if (extScaleRow.dragging > 0 && Math.abs(extScaleRow.dragging - InputSettings.extScale) > 0.001)
+                        InputSettings.set("extScale", extScaleRow.dragging)
+                    extScaleRow.dragging = -1
+                }
+            }
+        }
+        SettingRow {
+            visible: page.ext !== null && !InputSettings.extMirror
+            label: "Presets"
             Segmented {
                 options: page.scales.map(sc => ({ label: Math.round(sc * 100) + "%", value: sc }))
-                value: page.scales.find(sc => Math.abs(sc - InputSettings.extScale) < 0.01) ?? 1
+                value: page.scales.find(sc => Math.abs(sc - InputSettings.extScale) < 0.01)
                 onPicked: v => InputSettings.set("extScale", v)
             }
         }
@@ -186,7 +209,8 @@ Column {
     Group {
         title: "MacBook Display Size"
         footer: "Text size changes GTK apps (Files, Calculator…) and Firefox's toolbars and menus, live. "
-              + "Websites keep their own zoom (⌘+ / ⌘−). Display scale resizes everything, including the menu bar and dock."
+              + "Websites keep their own zoom (⌘+ / ⌘−). Display scale resizes everything, including the menu bar and dock — "
+              + "100%, 133% and 200% are pixel-exact; other steps can look very slightly softer."
         SettingRow {
             label: "Text size"
             hint: Math.round(page.textScale * 100) + "%"
@@ -198,14 +222,76 @@ Column {
             }
         }
         SettingRow {
+            id: scaleRow
             label: "Display scale"
-            hint: InputSettings.displayScale > 1.9 ? "Looks like 1512 × 982" : "Looks like 2268 × 1473 (everything about a third smaller)"
+            hint: Math.round(scaleRow.shown * 100) + "% · Looks like " + Math.round(3024 / scaleRow.shown) + " × " + Math.round(1964 / scaleRow.shown)
+                + (scaleRow.shown === 2 ? " (Default)" : InputSettings.exactScale(scaleRow.shown) ? " (sharpest)" : "")
+            // Value under the knob while dragging; the screen only rescales on release
+            property real dragging: -1
+            readonly property real shown: dragging > 0 ? dragging : InputSettings.displayScale
+            function snap(v) {
+                v = Math.round(v * 20) / 20                          // 5% steps (multiples of 1/120, as Wayland wants)
+                return Math.abs(v - 1.333333) < 0.03 ? 1.333333 : v  // stick to the pixel-exact 133%
+            }
+            SettingSlider {
+                from: 1; to: 2.5; ticks: 4
+                minLabel: "More Space"; maxLabel: "Larger"
+                value: scaleRow.shown
+                onMoved: v => scaleRow.dragging = scaleRow.snap(v)
+                onReleased: v => {
+                    if (scaleRow.dragging > 0 && Math.abs(scaleRow.dragging - InputSettings.displayScale) > 0.001)
+                        InputSettings.set("displayScale", scaleRow.dragging)
+                    scaleRow.dragging = -1
+                }
+            }
+        }
+        SettingRow {
+            label: "Presets"
             last: true
             Segmented {
-                options: [{ label: "Default", value: 2 }, { label: "More Space", value: 1.333333 }]
-                value: InputSettings.displayScale > 1.9 ? 2 : 1.333333
+                options: [2, 1.75, 1.5, 1.333333, 1].map(sc => ({ label: sc === 2 ? "Default" : Math.round(sc * 100) + "%", value: sc }))
+                value: InputSettings.displayScale
                 onPicked: v => InputSettings.set("displayScale", v)
             }
+        }
+    }
+
+    Group {
+        title: "Night Shift"
+        footer: "Warms up the colours of the screen to make it easier on your eyes at night. "
+              + "With a schedule it turns on and off by itself; you can still switch it by hand in between."
+        SettingRow {
+            label: "Night Shift"
+            hint: "Also in Control Center"
+            Toggle { checked: Ui.nightLight; onToggled: v => Ui.setNightLight(v) }
+        }
+        SettingRow {
+            label: "Colour temperature"
+            hint: Prefs.nightTemp + " K"
+            SettingSlider {
+                // reversed so that right = warmer
+                from: 2500; to: 6000; stepSize: 100; ticks: 8
+                minLabel: "Less Warm"; maxLabel: "More Warm"
+                value: 8500 - Prefs.nightTemp
+                onMoved: v => Prefs.nightTemp = Math.round(8500 - v)
+                onReleased: v => Prefs.set("nightTemp", Prefs.nightTemp)
+            }
+        }
+        SettingRow {
+            label: "Schedule"
+            last: !Prefs.nightSchedule
+            Toggle { checked: Prefs.nightSchedule; onToggled: v => Prefs.set("nightSchedule", v) }
+        }
+        SettingRow {
+            visible: Prefs.nightSchedule
+            label: "From"
+            HourStepper { hour: Prefs.nightFrom; onChanged: h => Prefs.set("nightFrom", (h + 24) % 24) }
+        }
+        SettingRow {
+            visible: Prefs.nightSchedule
+            label: "To"
+            last: true
+            HourStepper { hour: Prefs.nightTo; onChanged: h => Prefs.set("nightTo", (h + 24) % 24) }
         }
     }
 }

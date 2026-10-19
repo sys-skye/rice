@@ -11,11 +11,23 @@ Singleton {
     property string openPanel: ""
     property string lastClosed: ""
     property real lastClosedAt: 0
+    // Screen the open dropdown belongs to ("" = whichever screen Hyprland has focused).
+    // Set from the bar that was clicked, so a click never depends on Hyprland's focus being up to date.
+    property string panelScreen: ""
+    onOpenPanelChanged: if (openPanel === "") panelScreen = ""
 
-    function toggle(name) {
+    function toggle(name, screenName) {
         // A click on the bar that dismissed this same panel shouldn't reopen it
         if (openPanel === "" && lastClosed === name && Date.now() - lastClosedAt < 250) return
-        openPanel = openPanel === name ? "" : name
+        const here = screenName ?? ""
+        // Same icon on another screen's bar: move the dropdown there instead of closing it
+        if (openPanel === name && (here === "" || here === panelScreen)) { openPanel = ""; return }
+        panelScreen = here
+        openPanel = name
+    }
+    // Is the open dropdown meant for this screen?
+    function panelOn(screenName, isFocusedScreen) {
+        return panelScreen !== "" ? panelScreen === screenName : isFocusedScreen
     }
     function closed(name) {
         if (openPanel !== name) return
@@ -30,7 +42,7 @@ Singleton {
 
     // System Settings window
     property bool settingsOpen: false
-    property string settingsPage: "trackpad"
+    property string settingsPage: "general"
     function openSettings(page) {
         if (page) settingsPage = page
         openPanel = ""
@@ -59,7 +71,7 @@ Singleton {
     property bool nightLight: false
     function setNightLight(on) {
         nightLight = on
-        run(on ? "pkill -x hyprsunset; setsid -f hyprsunset -t " + Settings.nightLightTemp + " >/dev/null 2>&1"
+        run(on ? "pkill -x hyprsunset; setsid -f hyprsunset -t " + Prefs.nightTemp + " >/dev/null 2>&1"
                : "pkill -x hyprsunset")
     }
     Process {

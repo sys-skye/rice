@@ -18,11 +18,37 @@ Panel {
 
     onVisibleChanged: if (adapter && adapter.enabled) adapter.discovering = visible
 
+    // Restart discovery (BlueZ sometimes stops reporting new devices after a while)
+    function refresh() {
+        if (!on) return
+        adapter.discovering = false
+        restartDiscovery.restart()
+        settle.restart()
+    }
+    Timer {
+        id: restartDiscovery
+        interval: 400
+        onTriggered: if (root.on && root.visible) root.adapter.discovering = true
+    }
+    Timer { id: settle; interval: 3000 }
+    // Turning Bluetooth on with the dropdown open should start looking for devices straight away
+    onOnChanged: if (on && visible) adapter.discovering = true
+
     SectionTitle {
         text: "Bluetooth"
-        Toggle {
-            checked: root.on
-            onToggled: v => { if (root.adapter) root.adapter.enabled = v }
+        Row {
+            spacing: 8
+            RefreshButton {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.on
+                busy: restartDiscovery.running || settle.running
+                onClicked: root.refresh()
+            }
+            Toggle {
+                anchors.verticalCenter: parent.verticalCenter
+                checked: root.on
+                onToggled: v => { if (root.adapter) root.adapter.enabled = v }
+            }
         }
     }
 

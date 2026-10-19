@@ -31,6 +31,7 @@ Singleton {
     property real trailLength: 40         // px: longest the smear gets
     property real trailStrength: 0.55     // opacity of the nearest ghost
     property string trailType: "blur"     // blur (soft streak) | comet (glowing accent tail) | dots (separate bubbles)
+    property string trailColor: "auto"    // "auto" (follows Light/Dark; accent for comet) or a "#rrggbb" colour
     // Three-finger swipe between Spaces
     property int swipeDistance: 300       // px of finger travel for one whole Space
     property real swipeSwitchAt: 0.5      // fraction of the swipe after which it switches
@@ -53,12 +54,27 @@ Singleton {
     // Keyboard
     property int repeatRate: 40
     property int repeatDelay: 250
+    property string kbLayout: "us"         // xkb layouts, comma-separated ("us,de")
+    property string capsLock: "compose"    // compose | escape | ctrl | none | caps
 
     property var connectedMice: []        // names of external mice right now
     property bool loaded: false
 
+    // Built-in scales that give whole logical pixels (sharpest): 100%, 133%, 200%
+    function exactScale(sc) { return [1, 1.333333, 2].some(x => Math.abs(x - sc) < 0.001) }
+    // Same rule for the external screen at its current resolution
+    function wholePixels(w, h, sc) { return Math.abs(w / sc - Math.round(w / sc)) < 0.01 && Math.abs(h / sc - Math.round(h / sc)) < 0.01 }
+    function extPixels() { const m = /^(\d+)x(\d+)/.exec(extMode); return m ? [Number(m[1]), Number(m[2])] : extSize }
+    function extExact() { const p = extPixels(); return wholePixels(p[0], p[1], extScale) }
+    // In-between scales don't split the screen into whole pixels, so Hyprland's check has to be off for them
+    function scaleChecksOff() { return !exactScale(displayScale) || !extExact() }
     function keyword(k, v) { Quickshell.execDetached(["hyprctl", "keyword", k, String(v)]) }
     function b(v) { return v ? 1 : 0 }
+    // xkb options for the Caps Lock choice (+ ⌃Space switches layouts when there are several)
+    function kbOptions() {
+        const caps = { compose: "compose:caps", escape: "caps:escape", ctrl: "ctrl:nocaps", none: "caps:none", caps: "caps:capslock" }[capsLock] ?? ""
+        return [caps, kbLayout.indexOf(",") >= 0 ? "grp:ctrl_space_toggle" : ""].filter(x => x).join(",")
+    }
 
     function set(prop, value) {
         root[prop] = value
@@ -75,6 +91,9 @@ Singleton {
         case "mouseNaturalScroll": keyword("input:natural_scroll", b(value)); break
         case "repeatRate": keyword("input:repeat_rate", value); break
         case "repeatDelay": keyword("input:repeat_delay", value); break
+        case "kbLayout": case "capsLock":
+            Quickshell.execDetached(["hyprctl", "--batch", "keyword input:kb_layout " + kbLayout + "; keyword input:kb_options " + kbOptions()])
+            break
         case "swipeDistance": keyword("gestures:workspace_swipe_distance", value); break
         case "swipeSwitchAt": keyword("gestures:workspace_swipe_cancel_ratio", value.toFixed(2)); break
         case "swipeFlick": keyword("gestures:workspace_swipe_min_speed_to_force", value); break
@@ -82,7 +101,11 @@ Singleton {
         case "gapsIn": keyword("general:gaps_in", value); break
         case "gapsOut": keyword("general:gaps_out", value); break
         case "rounding": keyword("decoration:rounding", value); break
-        case "displayScale": keyword("monitor", "eDP-1,preferred,auto," + value.toFixed(6)); applyExternal(); break
+        case "displayScale":
+            Quickshell.execDetached(["hyprctl", "--batch", "keyword debug:disable_scale_checks " + b(scaleChecksOff())
+                                     + "; keyword monitor eDP-1,preferred,auto," + value.toFixed(6)
+                                     + "; keyword monitor " + extMonitorLine()])
+            break
         case "extMode": case "extScale": case "extPosition": case "extMirror": applyExternal(); break
         }
         saveTimer.restart()
@@ -115,7 +138,10 @@ Singleton {
         return extName + "," + (extMode || "preferred") + "," + extPositionString() + "," + extScale.toFixed(6)
              + (extMirror ? ",mirror,eDP-1" : "")
     }
-    function applyExternal() { keyword("monitor", extMonitorLine()) }
+    function applyExternal() {
+        Quickshell.execDetached(["hyprctl", "--batch", "keyword debug:disable_scale_checks " + b(scaleChecksOff())
+                                 + "; keyword monitor " + extMonitorLine()])
+    }
 
     function confText() {
         let t = "# Written by System Settings (Apple menu). Edits here get overwritten —\n"
@@ -126,6 +152,8 @@ Singleton {
               + "input:natural_scroll = " + mouseNaturalScroll + "\n"
               + "input:repeat_rate = " + repeatRate + "\n"
               + "input:repeat_delay = " + repeatDelay + "\n"
+              + "input:kb_layout = " + kbLayout + "\n"
+              + "input:kb_options = " + kbOptions() + "\n"
               + "input:touchpad:natural_scroll = " + naturalScroll + "\n"
               + "input:touchpad:tap-to-click = " + tapToClick + "\n"
               + "input:touchpad:tap-and-drag = " + tapAndDrag + "\n"
@@ -141,7 +169,9 @@ Singleton {
               + "gestures:workspace_swipe_cancel_ratio = " + swipeSwitchAt.toFixed(2) + "\n"
               + "gestures:workspace_swipe_min_speed_to_force = " + swipeFlick + "\n"
               + "gestures:workspace_swipe_forever = " + swipeForever + "\n\n"
-              + (Math.abs(displayScale - 2) > 0.01 ? "# Built-in display scale\nmonitor = eDP-1, preferred, auto, " + displayScale.toFixed(6) + "\n\n" : "")
+              + (scaleChecksOff() ? "# Allow in-between display scales\ndebug:disable_scale_checks = 1\n\n" : "")
+              + (Math.abs(displayScale - 2) > 0.01 ? "# Built-in display scale\n"
+                 + "monitor = eDP-1, preferred, auto, " + displayScale.toFixed(6) + "\n\n" : "")
               + "# External display (HDMI): mode, position, scale\nmonitor = " + extMonitorLine().replace(/,/g, ", ") + "\n\n"
               + "# Terminal scrolling speed on the trackpad\n"
               + "windowrule = match:class ^(kitty|Alacritty|foot|floating-term)$, scroll_touchpad " + terminalScroll.toFixed(2) + "\n"
@@ -155,8 +185,8 @@ Singleton {
     function save() {
         const json = JSON.stringify({
             sensitivity, accel, naturalScroll, tapToClick, tapAndDrag, twoFingerRightClick, disableWhileTyping,
-            scrollFactor, terminalScroll, mouseScrollFactor, mouseNaturalScroll, mice, repeatRate, repeatDelay,
-            trailEnabled, trailLength, trailStrength, trailType, displayScale,
+            scrollFactor, terminalScroll, mouseScrollFactor, mouseNaturalScroll, mice, repeatRate, repeatDelay, kbLayout, capsLock,
+            trailEnabled, trailLength, trailStrength, trailType, trailColor, displayScale,
             swipeDistance, swipeSwitchAt, swipeFlick, swipeForever, gapsIn, gapsOut, rounding,
             extMode, extScale, extPosition, extMirror, mainDisplay
         }, null, 2)

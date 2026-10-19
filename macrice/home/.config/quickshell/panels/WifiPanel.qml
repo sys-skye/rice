@@ -23,11 +23,30 @@ Panel {
         if (!visible) { askPasswordFor = ""; error = "" }
     }
 
+    // Ask NetworkManager for a fresh scan and restart Quickshell's scanner so the list repopulates
+    function refresh() {
+        error = ""
+        if (device) { device.scannerEnabled = false; device.scannerEnabled = visible }
+        rescan.running = false
+        rescan.running = true
+        settle.restart()
+    }
+
     SectionTitle {
         text: "Wi-Fi"
-        Toggle {
-            checked: Networking.wifiEnabled
-            onToggled: v => Networking.wifiEnabled = v
+        Row {
+            spacing: 8
+            RefreshButton {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: Networking.wifiEnabled
+                busy: rescan.running || settle.running
+                onClicked: root.refresh()
+            }
+            Toggle {
+                anchors.verticalCenter: parent.verticalCenter
+                checked: Networking.wifiEnabled
+                onToggled: v => Networking.wifiEnabled = v
+            }
         }
     }
 
@@ -36,7 +55,7 @@ Panel {
     Label {
         x: 8
         visible: Networking.wifiEnabled && root.networks.length === 0
-        text: "Searching for networks…"
+        text: settle.running || rescan.running ? "Scanning…" : "Searching for networks…"
         dim: true
         height: 28
     }
@@ -118,6 +137,10 @@ Panel {
         text: "Network Settings…"
         onClicked: { Ui.openPanel = ""; Ui.launch("nm-connection-editor") }
     }
+
+    // "Scanning not allowed immediately following previous scan" is harmless, so errors are ignored
+    Process { id: rescan; command: ["nmcli", "device", "wifi", "rescan"] }
+    Timer { id: settle; interval: 2500 }   // results trickle in for a couple of seconds
 
     Process {
         id: join

@@ -64,6 +64,53 @@ Column {
         }
         SettingRow {
             visible: InputSettings.trailEnabled
+            label: "Trail colour"
+            hint: InputSettings.trailColor === "auto" ? "Automatic: follows Light/Dark (blue for Comet)" : ""
+            ColorSwatches {
+                colors: ["auto", "#000000", "#ffffff", "#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#ffd60a", "#30d158", "#64d2ff"]
+                value: InputSettings.trailColor
+                onPicked: v => InputSettings.set("trailColor", v)
+            }
+        }
+        SettingRow {
+            visible: InputSettings.trailEnabled
+            label: "Custom colour"
+            hint: hexField.valid || hexField.text === "" ? "Any hex colour, e.g. #000000" : "Use 6 hex digits, like #1e90ff"
+            Row {
+                spacing: 8
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 20; height: 20; radius: 10
+                    color: hexField.valid ? hexField.hex : "transparent"
+                    border.color: Theme.fg(0.2)
+                }
+                Rectangle {
+                    width: 110; height: 28; radius: 6
+                    color: Theme.fg(0.08)
+                    border.color: hexField.text !== "" && !hexField.valid ? "#ff453a" : hexField.activeFocus ? Theme.accent : Theme.panelBorder
+                    TextInput {
+                        id: hexField
+                        // "1e90ff", "#1E90FF" → "#1e90ff"
+                        readonly property string hex: "#" + text.replace(/^#/, "").toLowerCase()
+                        readonly property bool valid: /^#?[0-9a-fA-F]{6}$/.test(text)
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        verticalAlignment: TextInput.AlignVCenter
+                        color: Theme.text
+                        font.family: Theme.font
+                        font.pixelSize: Theme.fontSize
+                        maximumLength: 7
+                        clip: true
+                        text: InputSettings.trailColor === "auto" ? "" : InputSettings.trailColor
+                        // Applies as soon as it's a complete colour
+                        onTextEdited: if (valid) InputSettings.set("trailColor", hex)
+                    }
+                }
+            }
+        }
+        SettingRow {
+            visible: InputSettings.trailEnabled
             label: "Trail length"
             SettingSlider {
                 from: 15; to: 150; ticks: 8

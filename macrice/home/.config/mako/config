@@ -17,6 +17,8 @@ default-timeout=5000
 group-by=app-name,summary
 format=<b>%s</b>\n%b
 layer=overlay
+# Banner time and position from System Settings → Notifications
+include=~/.config/mako/settings
 
 [urgency=critical]
 border-color=#ff453acc

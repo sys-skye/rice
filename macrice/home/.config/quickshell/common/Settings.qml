@@ -18,6 +18,5 @@ Singleton {
 
     readonly property string terminal: "kitty"
     readonly property string scripts: Quickshell.env("HOME") + "/.config/hypr/scripts"
-    readonly property int nightLightTemp: 4500
     readonly property string backlight: "apple-panel-bl"
 }

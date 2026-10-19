@@ -12,6 +12,7 @@ Item {
     property string minLabel: ""
     property string maxLabel: ""
     signal moved(real value)
+    signal released(real value)        // drag finished (for settings too heavy to apply live)
 
     implicitWidth: 260
     implicitHeight: minLabel || maxLabel ? 38 : 22
@@ -58,6 +59,7 @@ Item {
             }
             onPressed: e => update(e.x)
             onPositionChanged: e => { if (pressed) update(e.x) }
+            onReleased: root.released(root.value)
         }
     }
     Label { visible: root.minLabel !== ""; y: 24; x: 2; text: root.minLabel; dim: true; font.pixelSize: 10 }

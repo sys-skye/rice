@@ -15,7 +15,7 @@ Singleton {
 
     readonly property color text: isDark ? "#f5f5f7" : "#1d1d1f"
     readonly property color textDim: isDark ? Qt.rgba(1, 1, 1, 0.55) : Qt.rgba(0, 0, 0, 0.5)
-    readonly property color accent: "#0a84ff"
+    readonly property color accent: Prefs.accent
     readonly property color red: isDark ? "#ff453a" : "#ff3b30"
     readonly property color orange: isDark ? "#ff9f0a" : "#ff9500"
     readonly property color yellow: isDark ? "#ffd60a" : "#c9a400"

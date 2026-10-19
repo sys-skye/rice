@@ -14,17 +14,20 @@ FloatingWindow {
     minimumSize: Qt.size(720, 460)
 
     readonly property var pages: [
+        { id: "general",    name: "General",          icon: 0xF0493, color: "#8e8e93", page: "GeneralPage.qml" },
         { id: "wifi",       name: "Wi-Fi",            icon: 0xF0928, color: "#0a84ff", page: "WifiPage.qml" },
         { id: "bluetooth",  name: "Bluetooth",        icon: 0xF00AF, color: "#0a84ff", page: "BluetoothPage.qml" },
+        { id: "notifications", name: "Notifications", icon: 0xF009A, color: "#ff453a", page: "NotificationsPage.qml" },
         { id: "sound",      name: "Sound",            icon: 0xF057E, color: "#ff375f", page: "SoundPage.qml" },
         { id: "display",    name: "Displays",         icon: 0xF0379, color: "#0a84ff", page: "DisplayPage.qml" },
         { id: "battery",    name: "Battery",          icon: 0xF0079, color: "#30d158", page: "BatteryPage.qml" },
+        { id: "lock",       name: "Lock Screen",      icon: 0xF033E, color: "#1c1c1e", page: "LockScreenPage.qml" },
         { id: "trackpad",   name: "Trackpad & Mouse", icon: 0xF037D, color: "#8e8e93", page: "TrackpadPage.qml" },
         { id: "keyboard",   name: "Keyboard",         icon: 0xF030C, color: "#8e8e93", page: "KeyboardPage.qml" },
         { id: "appearance", name: "Appearance",       icon: 0xF03D8, color: "#5e5ce6", page: "AppearancePage.qml" },
         { id: "dock",       name: "Desktop & Dock",   icon: 0xF10A9, color: "#1c1c1e", page: "DockPage.qml" },
     ]
-    readonly property var current: pages.find(p => p.id === Ui.settingsPage) ?? pages[5]
+    readonly property var current: pages.find(p => p.id === Ui.settingsPage) ?? pages.find(p => p.id === "general")
 
     Connections {
         target: Ui

@@ -23,6 +23,7 @@ Rectangle {
     }
     MouseArea {
         anchors.fill: parent
+        anchors.margins: -6          // easier to hit than the 34×20 switch itself
         cursorShape: Qt.PointingHandCursor
         onClicked: root.toggled(!root.checked)
     }

@@ -3,6 +3,8 @@ import qs.common
 
 Column {
     width: parent ? parent.width : 500
+    readonly property var accentNames: ({ "#0a84ff": "Blue", "#bf5af2": "Purple", "#ff375f": "Pink", "#ff453a": "Red",
+                                          "#ff9f0a": "Orange", "#ffcc00": "Yellow", "#30d158": "Green", "#8e8e93": "Graphite" })
 
     // Little window preview, like the macOS Appearance picker
     component ModeCard: Column {
@@ -52,23 +54,6 @@ Column {
         }
     }
 
-    // ‹ 19:00 › hour stepper for Auto
-    component HourStepper: Row {
-        id: stepper
-        property int hour
-        signal changed(int hour)
-        spacing: 4
-        LinkButton { text: "‹"; onClicked: stepper.changed(stepper.hour - 1) }
-        Label {
-            width: 52
-            horizontalAlignment: Text.AlignHCenter
-            anchors.verticalCenter: parent.verticalCenter
-            text: (stepper.hour < 10 ? "0" : "") + stepper.hour + ":00"
-            font.features: { "tnum": 1 }
-        }
-        LinkButton { text: "›"; onClicked: stepper.changed(stepper.hour + 1) }
-    }
-
     Group {
         title: "Appearance"
         footer: "Switches the menu bar, dock, menus, apps (GTK, Firefox), the terminal and the wallpaper together."
@@ -82,6 +67,21 @@ Column {
                 ModeCard { mode: "light"; label: "Light" }
                 ModeCard { mode: "dark"; label: "Dark" }
                 ModeCard { mode: "auto"; label: "Auto" }
+            }
+        }
+    }
+
+    Group {
+        title: "Accent colour"
+        footer: "Used for buttons, switches, sliders and selections in the menu bar, Control Center and System Settings."
+        SettingRow {
+            label: "Accent colour"
+            hint: accentNames[Prefs.accent] ?? Prefs.accent
+            last: true
+            ColorSwatches {
+                colors: Object.keys(accentNames)
+                value: Prefs.accent
+                onPicked: v => Prefs.set("accent", v)
             }
         }
     }

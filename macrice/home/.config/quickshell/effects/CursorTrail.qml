@@ -21,6 +21,8 @@ Scope {
     readonly property real latencyMs: 16      // how far behind our position reports are; the streak is extended by this
     readonly property real maxLead: 48        // never extend the streak further than this (px)
     readonly property string type: InputSettings.trailType   // blur | comet | dots
+    readonly property color tint: InputSettings.trailColor !== "auto" ? InputSettings.trailColor
+                                  : type === "comet" ? Theme.accent : Theme.streak
     readonly property real dotGap: 9          // px between bubbles in the "dots" trail
 
     property var samples: []                  // [{ x, y, t }] newest last (t in Date.now() ms)
@@ -211,7 +213,7 @@ Scope {
                         width: size
                         height: size
                         radius: size / 2
-                        color: root.type === "comet" ? Qt.tint(Theme.accent, Qt.rgba(1, 1, 1, 0.5 * (1 - (g ? g.d : 0)))) : Theme.streak
+                        color: root.type === "comet" ? Qt.tint(root.tint, Qt.rgba(1, 1, 1, 0.5 * (1 - (g ? g.d : 0)))) : root.tint
                         opacity: g ? Math.min(1, g.o) : 0
                     }
                 }

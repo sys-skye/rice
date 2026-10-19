@@ -42,18 +42,16 @@ PanelWindow {
         margins.left = Math.max(8, Math.min(x, ownerWindow.width - panelWidth - 8))
     }
 
-    Connections {
-        target: Ui
-        function onOpenPanelChanged() {
-            const want = Ui.openPanel === root.name && root.enabledHere
-            if (want === root.visible) return
-            if (want) root.place()
-            root.visible = want
-        }
+    // Re-evaluated whenever the open panel, its screen or the focused screen changes
+    readonly property bool wanted: Ui.openPanel === name && Ui.panelOn(ownerWindow?.screen?.name ?? "", enabledHere)
+    onWantedChanged: {
+        if (wanted === visible) return
+        if (wanted) place()
+        visible = wanted
     }
     onVisibleChanged: {
         if (visible) { bg.opacity = 0; bg.scale = 0.97; showAnim.restart(); keys.forceActiveFocus(); opened() }
-        else Ui.closed(name)
+        else if (wanted) Ui.closed(name)   // hidden by something other than Ui (e.g. the compositor)
     }
 
     Item {

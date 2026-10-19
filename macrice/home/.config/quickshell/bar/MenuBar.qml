@@ -24,7 +24,7 @@ PanelWindow {
     color: "transparent"
     WlrLayershell.namespace: "menubar"
     WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: Ui.openPanel === "wifi" && isFocusedScreen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: Ui.openPanel === "wifi" && Ui.panelOn(screen?.name ?? "", isFocusedScreen) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     readonly property bool isFocusedScreen: Hyprland.focusedMonitor?.name === screen?.name
     readonly property bool hasNotch: screen?.name === "eDP-1"      // external screens have no notch
@@ -48,9 +48,12 @@ PanelWindow {
     readonly property var btAdapter: Bluetooth.defaultAdapter
     readonly property bool btConnected: Bluetooth.devices.values.some(d => d.connected)
 
+    // Open a dropdown under this bar (not whichever screen Hyprland thinks is focused)
+    function toggle(name) { Ui.toggle(name, bar.screen?.name ?? "") }
+
     PwObjectTracker { objects: [bar.sink] }
     IdleInhibitor { window: bar; enabled: Ui.keepAwake }
-    SystemClock { id: clock; precision: SystemClock.Minutes }
+    SystemClock { id: clock; precision: Prefs.clockSeconds ? SystemClock.Seconds : SystemClock.Minutes }
 
     Rectangle { anchors.fill: parent; color: Theme.barBg }
 
@@ -67,7 +70,7 @@ PanelWindow {
             padding: 11
             active: Ui.openPanel === "system"
             Icon { anchors.verticalCenter: parent.verticalCenter; text: Glyphs.logo; size: 17 }
-            onClicked: Ui.toggle("system")
+            onClicked: bar.toggle("system")
         }
         BarButton {
             id: appBtn
@@ -78,7 +81,7 @@ PanelWindow {
                 bold: true
                 width: Math.min(implicitWidth, 260)
             }
-            onClicked: if (bar.hasWindow) Ui.toggle("app")
+            onClicked: if (bar.hasWindow) bar.toggle("app")
         }
         Row {
             height: parent.height
@@ -152,7 +155,7 @@ PanelWindow {
                     text: bar.player ? [bar.player.trackTitle, bar.player.trackArtist].filter(s => s).join(" · ") : ""
                 }
             }
-            onClicked: Ui.toggle("media")
+            onClicked: bar.toggle("media")
         }
 
         readonly property real trayWidth: SystemTray.items.values.length * 28
@@ -169,7 +172,7 @@ PanelWindow {
                     Icon { anchors.verticalCenter: parent.verticalCenter; text: Glyphs.night; size: 14; color: Theme.orange }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: SleepTimer.minutesLeft + "m"; font.pixelSize: 12 }
                 }
-                onClicked: Ui.toggle("control")
+                onClicked: bar.toggle("control")
             }
             BarButton {
                 id: statsBtn
@@ -182,7 +185,19 @@ PanelWindow {
                     Icon { anchors.verticalCenter: parent.verticalCenter; text: Glyphs.memory; size: 14 }
                     Label { anchors.verticalCenter: parent.verticalCenter; text: Math.round(Stats.mem * 100) + "%"; font.pixelSize: 12; width: 28 }
                 }
-                onClicked: Ui.toggle("stats")
+                onClicked: bar.toggle("stats")
+            }
+            BarButton {
+                id: airdropBtn
+                visible: AirDrop.receiving || AirDrop.sending
+                active: Ui.openPanel === "airdrop"
+                AirDropIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    size: 17
+                    color: AirDrop.sending ? Theme.accent : Theme.text
+                }
+                onClicked: bar.toggle("airdrop")
+                onRightClicked: AirDrop.toggle()
             }
             BarButton {
                 id: btBtn
@@ -191,7 +206,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: !bar.btAdapter?.enabled ? Glyphs.bluetoothOff : bar.btConnected ? Glyphs.bluetoothConnected : Glyphs.bluetooth
                 }
-                onClicked: Ui.toggle("bluetooth")
+                onClicked: bar.toggle("bluetooth")
             }
             BarButton {
                 id: wifiBtn
@@ -202,7 +217,7 @@ PanelWindow {
                         : Glyphs.wifiIcon(bar.wifiNet.signalStrength > 1 ? bar.wifiNet.signalStrength / 100 : bar.wifiNet.signalStrength)
                     opacity: Networking.wifiEnabled ? 1 : 0.5
                 }
-                onClicked: Ui.toggle("wifi")
+                onClicked: bar.toggle("wifi")
             }
             BarButton {
                 id: soundBtn
@@ -211,7 +226,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: Glyphs.volumeIcon(bar.sink?.audio?.volume ?? 0, bar.sink?.audio?.muted ?? false)
                 }
-                onClicked: Ui.toggle("sound")
+                onClicked: bar.toggle("sound")
                 onRightClicked: if (bar.sink?.audio) bar.sink.audio.muted = !bar.sink.audio.muted
                 WheelHandler {
                     onWheel: e => {
@@ -240,23 +255,23 @@ PanelWindow {
                              : UPower.onBattery && batteryBtn.pct <= 0.2 ? Theme.orange : Theme.text
                     }
                 }
-                onClicked: Ui.toggle("battery")
+                onClicked: bar.toggle("battery")
             }
             BarButton {
                 id: ccBtn
                 active: Ui.openPanel === "control"
                 Icon { anchors.verticalCenter: parent.verticalCenter; text: Glyphs.controlCenter }
-                onClicked: Ui.toggle("control")
+                onClicked: bar.toggle("control")
             }
             BarButton {
                 id: clockBtn
                 active: Ui.openPanel === "calendar"
                 Label {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Qt.formatDateTime(clock.date, "ddd d MMM   HH:mm")
+                    text: Qt.formatDateTime(clock.date, Prefs.clockFormat)
                     font.weight: Font.Medium
                 }
-                onClicked: Ui.toggle("calendar")
+                onClicked: bar.toggle("calendar")
             }
         }
     }
@@ -264,7 +279,7 @@ PanelWindow {
     // ── Dropdowns ────────────────────────────────────────────────────
     Backdrop {
         screen: bar.screen
-        active: Ui.openPanel !== "" && Ui.openPanel !== "keybinds" && bar.isFocusedScreen
+        active: Ui.openPanel !== "" && Ui.openPanel !== "keybinds" && Ui.panelOn(bar.screen?.name ?? "", bar.isFocusedScreen)
         onDismissed: Ui.openPanel = ""
     }
     SystemMenu { anchorItem: logoBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
@@ -277,6 +292,8 @@ PanelWindow {
     }
     MediaPanel { anchorItem: mediaBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar; player: bar.player ?? Mpris.players.values[0] ?? null }
     StatsPanel { anchorItem: statsBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
+    // Opened from the bar icon (while on) or from the Control Center tile
+    AirDropPanel { anchorItem: airdropBtn.visible ? airdropBtn : ccBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     BluetoothPanel { anchorItem: btBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     WifiPanel { anchorItem: wifiBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     SoundPanel { anchorItem: soundBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
