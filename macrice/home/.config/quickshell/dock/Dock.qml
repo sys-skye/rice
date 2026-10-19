@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Widgets
 import qs.common
@@ -25,9 +26,30 @@ PanelWindow {
     WlrLayershell.namespace: "dock"
     WlrLayershell.layer: WlrLayer.Top
 
-    readonly property bool fullscreen: Hyprland.focusedWorkspace?.hasFullscreen ?? false
-    readonly property bool emptySpace: DockState.showOnEmptySpace
-        && (Hyprland.focusedWorkspace?.toplevels.values.length ?? 1) === 0
+    // Go by the Space on the dock's own screen, not whichever screen has focus
+    readonly property var space: Hyprland.monitorFor(dock.screen)?.activeWorkspace ?? null
+    // A special Space (⌘⇧M minimized windows, ⌘` terminal…) open on top of it on this screen
+    property string shownSpecial: ""
+    readonly property bool fullscreen: space?.hasFullscreen ?? false
+    readonly property bool emptySpace: DockState.showOnEmptySpace && shownSpecial === ""
+        && (space?.toplevels.values.length ?? 1) === 0
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "activespecial") return
+            const [name, mon] = event.data.split(",")
+            if (mon === dock.screen?.name) dock.shownSpecial = name
+        }
+    }
+    Process {   // which special Space is already open when the shell starts
+        running: true
+        command: ["hyprctl", "-j", "monitors"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { dock.shownSpecial = JSON.parse(text).find(m => m.name === dock.screen?.name)?.specialWorkspace.name ?? "" } catch (e) {}
+            }
+        }
+    }
     property bool menuOpen: false
     readonly property bool dragging: dragKey !== ""
     readonly property bool wantShow: !fullscreen && (!DockState.autoHide || edgeHover.hovered || dockHover.hovered
