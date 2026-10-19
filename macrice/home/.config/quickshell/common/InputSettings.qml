@@ -30,6 +30,7 @@ Singleton {
     property bool trailEnabled: true
     property real trailLength: 40         // px: longest the smear gets
     property real trailStrength: 0.55     // opacity of the nearest ghost
+    property string trailType: "blur"     // blur (soft streak) | comet (glowing accent tail) | dots (separate bubbles)
     // Three-finger swipe between Spaces
     property int swipeDistance: 300       // px of finger travel for one whole Space
     property real swipeSwitchAt: 0.5      // fraction of the swipe after which it switches
@@ -159,7 +160,7 @@ Singleton {
         const json = JSON.stringify({
             sensitivity, accel, naturalScroll, tapToClick, tapAndDrag, twoFingerRightClick, disableWhileTyping,
             scrollFactor, terminalScroll, mouseScrollFactor, mouseNaturalScroll, mice, repeatRate, repeatDelay,
-            trailEnabled, trailLength, trailStrength, displayScale,
+            trailEnabled, trailLength, trailStrength, trailType, displayScale,
             swipeDistance, swipeSwitchAt, swipeFlick, swipeForever, gapsIn, gapsOut, rounding,
             extMode, extScale, extPosition, extMirror, mainDisplay, separateSpaces
         }, null, 2)

@@ -1,0 +1,15 @@
+#!/bin/bash
+# Usage: start-hidden <window class> <command…>
+# Launch an app at login straight into special:hidden (like ⌘Q leaves it):
+# it runs in the background and the dock brings it back.
+class=$1; shift
+hyprctl -j clients | jq -e --arg c "$class" 'any(.[]; .class == $c)' >/dev/null && exit 0
+setsid -f uwsm-app -- "$@" >/dev/null 2>&1
+for _ in $(seq 120); do
+  addr=$(hyprctl -j clients | jq -r --arg c "$class" '.[] | select(.class == $c and .mapped) | .address' | head -1)
+  if [[ $addr ]]; then
+    hyprctl dispatch movetoworkspacesilent "special:hidden,address:$addr" >/dev/null
+    exit 0
+  fi
+  sleep 0.5
+done

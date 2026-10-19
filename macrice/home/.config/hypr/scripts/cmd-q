@@ -1,0 +1,13 @@
+#!/bin/bash
+# ⌘Q = quit the app. Apps listed here keep running in the background instead
+# (hidden in special:hidden, so they still notify); click them in the dock to
+# bring them back.
+KEEP_RUNNING='^(net\.thunderbird\.Thunderbird|thunderbird|org\.keepassxc\.KeePassXC)$'
+
+class=$(hyprctl -j activewindow | jq -r '.class // empty')
+[[ $class ]] || exit 0
+if [[ $class =~ $KEEP_RUNNING ]]; then
+  hyprctl dispatch movetoworkspacesilent special:hidden
+else
+  hyprctl dispatch killactive
+fi

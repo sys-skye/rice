@@ -18,9 +18,9 @@ confirm() {
 case "$choice" in
 *Lock*) loginctl lock-session ;;
 *Sleep*) systemctl suspend ;;
-*Restart*) confirm "Restart" && systemctl reboot ;;
-*Shut*) confirm "Shut Down" && systemctl poweroff ;;
-*Log*) confirm "Log Out" && uwsm stop ;;
+*Restart*) confirm "Restart" && $HOME/.config/hypr/scripts/session save && systemctl reboot ;;
+*Shut*) confirm "Shut Down" && $HOME/.config/hypr/scripts/session save && systemctl poweroff ;;
+*Log*) confirm "Log Out" && $HOME/.config/hypr/scripts/session save && uwsm stop ;;
 *Monitor*) uwsm-app -- kitty --class floating-term btop ;;
 *Appearance*) uwsm-app -- nwg-look ;;
 esac

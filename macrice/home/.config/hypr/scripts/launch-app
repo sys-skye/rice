@@ -1,0 +1,21 @@
+#!/bin/bash
+# fuzzel's launch-prefix. fuzzel waits for us before it exits, and only then
+# does the launcher script write down its exit code (10 = ⌘↩ = new Space), so
+# return right away and wait for that in the background.
+result=$XDG_RUNTIME_DIR/launcher.$LAUNCHER_ID
+(
+  for _ in $(seq 40); do [[ -s $result ]] && break; sleep 0.025; done
+  [[ $(cat "$result" 2>/dev/null) == 10 ]] && hyprctl dispatch workspace emptynm >/dev/null
+  rm -f "$result"
+  # Already running but hidden by ⌘Q (Thunderbird, KeePassXC…)? Bring it here
+  # instead of starting it again: match the hidden window's program name.
+  hidden=$(hyprctl -j clients | jq -r '.[] | select(.workspace.name == "special:hidden") | "\(.pid) \(.address)"')
+  while read -r pid addr; do
+    # (comm, not /proc/pid/exe: KeePassXC makes that unreadable; comm is ≤15 chars)
+    [[ $pid && $(</proc/$pid/comm) == "$(basename "$1" | cut -c1-15)" ]] || continue
+    ws=$(hyprctl -j activeworkspace | jq -r .id)
+    exec hyprctl --batch "dispatch movetoworkspace $ws,address:$addr; dispatch focuswindow address:$addr"
+  done <<<"$hidden"
+  exec uwsm-app -- "$@"
+) </dev/null >/dev/null 2>&1 &
+disown

@@ -1,0 +1,160 @@
+#!/usr/bin/python3 -I
+"""Reopen windows when logging back in (like macOS).
+
+  session watch    keep ~/.local/state/hypr-session.json up to date (runs all session)
+  session save     save now and stop watching (used right before restart / shut down / log out)
+  session restore  relaunch the saved apps and put each window back on its Space, then watch
+
+Apps are relaunched once per process, so apps that restore their own windows
+(Firefox, Chromium, Electron, IntelliJ) come back with all their windows and tabs.
+Terminals reopen in the folder their shell was in.
+"""
+import json, os, socket, subprocess, sys, time
+from difflib import SequenceMatcher
+
+STATE = os.environ.get("HYPR_SESSION_FILE", os.path.expanduser("~/.local/state/hypr-session.json"))
+FROZEN = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "hypr-session.frozen")
+SKIP_CLASSES = {"org.quickshell", "net.thunderbird.Thunderbird", "org.keepassxc.KeePassXC", "dropdown-term", "about-this-computer", ""}
+TERMINALS = {"kitty": "--directory", "Alacritty": "--working-directory", "foot": "--working-directory"}
+
+
+def hypr(*args):
+    return subprocess.run(["hyprctl", *args], capture_output=True, text=True).stdout
+
+
+def clients():
+    try:
+        return json.loads(hypr("clients", "-j"))
+    except json.JSONDecodeError:
+        return []
+
+
+def launch_cmd(pid, cls):
+    try:
+        argv = open(f"/proc/{pid}/cmdline", "rb").read().split(b"\0")
+        argv = [a.decode() for a in argv if a]
+        cgroup = open(f"/proc/{pid}/cgroup").read()
+    except OSError:
+        return None
+    if "app-flatpak-" in cgroup:
+        app = cgroup.split("app-flatpak-", 1)[1].rsplit("-", 1)[0]
+        return ["flatpak", "run", app]
+    if not argv or "bwrap" in argv[0]:
+        return None
+    if cls in TERMINALS:
+        argv = [argv[0], TERMINALS[cls], shell_cwd(pid)]
+    return argv
+
+
+def shell_cwd(pid):
+    try:
+        child = open(f"/proc/{pid}/task/{pid}/children").read().split()[0]
+        return os.readlink(f"/proc/{child}/cwd")
+    except (OSError, IndexError):
+        return os.path.expanduser("~")
+
+
+def save():
+    if os.path.exists(FROZEN):
+        return
+    windows = []
+    for c in clients():
+        ws = c["workspace"]["name"]
+        if c["class"] in SKIP_CLASSES or ws == "special:dropdown" or not c["mapped"]:
+            continue
+        cmd = launch_cmd(c["pid"], c["class"])
+        if cmd:
+            windows.append({"pid": c["pid"], "class": c["class"], "title": c["title"], "workspace": ws,
+                            "floating": c["floating"], "at": c["at"], "size": c["size"],
+                            "fullscreen": c["fullscreen"], "cmd": cmd})
+    try:
+        active = json.loads(hypr("activeworkspace", "-j"))["name"]
+    except (json.JSONDecodeError, KeyError):
+        active = "1"
+    os.makedirs(os.path.dirname(STATE), exist_ok=True)
+    tmp = STATE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump({"active": active, "windows": windows}, f, indent=1)
+    os.replace(tmp, STATE)
+
+
+def watch():
+    """Save whenever windows open, close or move (debounced, so the burst of
+    windows closing during a shutdown is never what gets saved)."""
+    path = f"{os.environ['XDG_RUNTIME_DIR']}/hypr/{os.environ['HYPRLAND_INSTANCE_SIGNATURE']}/.socket2.sock"
+    sock = socket.socket(socket.AF_UNIX)
+    sock.connect(path)
+    sock.settimeout(1)
+    events = ("openwindow", "closewindow", "movewindow", "changefloatingmode", "fullscreen", "windowtitle")
+    due, buf = time.monotonic() + 2, b""
+    while True:
+        try:
+            data = sock.recv(65536)
+            if not data:
+                return
+            buf += data
+            *lines, buf = buf.split(b"\n")
+            if any(l.startswith(e.encode()) for l in lines for e in events) and due is None:
+                due = time.monotonic() + 5
+        except socket.timeout:
+            pass
+        if due and time.monotonic() >= due:
+            save()
+            due = None
+
+
+def place(win, c):
+    addr = f"address:{c['address']}"
+    ws = win["workspace"]
+    target = ws if ws.isdigit() or ws.startswith("special:") else "name:" + ws
+    cmds = [f"dispatch movetoworkspacesilent {target},{addr}"]
+    if win["floating"] != c["floating"]:
+        cmds.append(f"dispatch togglefloating {addr}")
+    if win["floating"]:
+        cmds += [f"dispatch resizewindowpixel exact {win['size'][0]} {win['size'][1]},{addr}",
+                 f"dispatch movewindowpixel exact {win['at'][0]} {win['at'][1]},{addr}"]
+    hypr("--batch", "; ".join(cmds))
+
+
+def restore():
+    if os.path.exists(FROZEN):
+        os.remove(FROZEN)
+    try:
+        state = json.load(open(STATE))
+    except (OSError, json.JSONDecodeError):
+        return
+    seen = {c["address"] for c in clients()}
+    pending = state["windows"]
+    for cmd in {tuple(w["cmd"]): None for w in pending}:  # one launch per process
+        subprocess.Popen(["uwsm-app", "--", *cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    deadline = time.monotonic() + 45
+    while pending and time.monotonic() < deadline:
+        time.sleep(0.5)
+        for c in clients():
+            if c["address"] in seen or not c["mapped"]:
+                continue
+            same = [w for w in pending if w["class"] == c["class"]]
+            if not same:
+                continue
+            time.sleep(0.3)  # let the title settle (browsers set it after mapping)
+            title = next((x["title"] for x in clients() if x["address"] == c["address"]), c["title"])
+            win = max(same, key=lambda w: SequenceMatcher(None, w["title"], title).ratio())
+            place(win, c)
+            pending.remove(win)
+            seen.add(c["address"])
+    active = state.get("active", "1")
+    hypr("dispatch", "workspace", active if active.isdigit() else "name:" + active)
+
+
+cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+if cmd == "save":
+    save()
+    open(FROZEN, "w").close()
+elif cmd == "watch":
+    watch()
+elif cmd == "restore":
+    restore()
+    watch()
+else:
+    sys.exit(__doc__)

@@ -55,6 +55,15 @@ Column {
         }
         SettingRow {
             visible: InputSettings.trailEnabled
+            label: "Trail type"
+            Segmented {
+                options: [{ label: "Blur", value: "blur" }, { label: "Comet", value: "comet" }, { label: "Dots", value: "dots" }]
+                value: InputSettings.trailType
+                onPicked: v => InputSettings.set("trailType", v)
+            }
+        }
+        SettingRow {
+            visible: InputSettings.trailEnabled
             label: "Trail length"
             SettingSlider {
                 from: 15; to: 150; ticks: 8

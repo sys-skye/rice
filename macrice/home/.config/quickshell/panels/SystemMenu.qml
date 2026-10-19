@@ -29,18 +29,18 @@ Panel {
     MenuItem {
         text: root.confirm === "reboot" ? "Click again to restart" : "Restart…"
         destructive: root.confirm === "reboot"
-        onClicked: root.confirmThen("reboot", "systemctl reboot")
+        onClicked: root.confirmThen("reboot", Settings.scripts + "/session save; systemctl reboot")
     }
     MenuItem {
         text: root.confirm === "off" ? "Click again to shut down" : "Shut Down…"
         destructive: root.confirm === "off"
-        onClicked: root.confirmThen("off", "systemctl poweroff")
+        onClicked: root.confirmThen("off", Settings.scripts + "/session save; systemctl poweroff")
     }
     MenuSeparator {}
     MenuItem { text: "Lock Screen"; shortcut: "⌃⌘Q"; onClicked: root.act("loginctl lock-session") }
     MenuItem {
         text: root.confirm === "logout" ? "Click again to log out" : "Log Out…"
         destructive: root.confirm === "logout"
-        onClicked: root.confirmThen("logout", "uwsm stop")
+        onClicked: root.confirmThen("logout", Settings.scripts + "/session save; uwsm stop")
     }
 }

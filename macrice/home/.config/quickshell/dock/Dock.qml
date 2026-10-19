@@ -54,20 +54,25 @@ PanelWindow {
         const groups = []
         const byKey = {}
         const add = (key, entry, appId) => {
-            if (!byKey[key]) { byKey[key] = { key: key, entry: entry, appId: appId, toplevels: [], pinned: false }; groups.push(byKey[key]) }
+            if (!byKey[key]) { byKey[key] = { key: key, entry: entry, appId: appId, toplevels: [], hiddenToplevels: [], pinned: false }; groups.push(byKey[key]) }
             return byKey[key]
         }
         for (const id of DockState.pinned) {
             const e = DesktopEntries.byId(id)
             add(e ? e.id : id, e, id).pinned = true
         }
+        // Windows ⌘Q hid (apps kept running in the background) don't count as open
+        const hidden = Hyprland.toplevels.values.filter(h => h.workspace?.name === "special:hidden").map(h => h.wayland)
         for (const t of ToplevelManager.toplevels.values) {
             if (!t.appId) continue
             if (t.appId === "dropdown-term") continue   // ⌘` terminal: lives hidden, not a dock app
             const e = DesktopEntries.heuristicLookup(t.appId)
-            add(e ? e.id : t.appId, e, t.appId).toplevels.push(t)
+            const g = add(e ? e.id : t.appId, e, t.appId)
+            if (hidden.includes(t)) g.hiddenToplevels.push(t)
+            else g.toplevels.push(t)
         }
-        return groups
+        // Background-only apps take no room in the dock unless pinned
+        return groups.filter(g => g.pinned || g.toplevels.length > 0)
     }
     readonly property var pinnedItems: items.filter(i => i.pinned)
     readonly property var runningItems: items.filter(i => !i.pinned)
@@ -183,7 +188,7 @@ PanelWindow {
                     id: appsMouse
                     anchors.fill: parent
                     hoverEnabled: true
-                    onClicked: Ui.run("pkill fuzzel || fuzzel")
+                    onClicked: Ui.run("$HOME/.config/hypr/scripts/launcher")
                 }
             }
         }

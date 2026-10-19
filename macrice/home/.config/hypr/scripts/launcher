@@ -1,0 +1,10 @@
+#!/bin/bash
+# ⌘Space app search (fuzzel). ↩ opens the app here, ⌘↩ on a new empty Space.
+# While it's open Hyprland is in the "launcher" submap, so ⌘↩ reaches fuzzel
+# instead of opening a terminal.
+pkill -x fuzzel && exit 0
+export LAUNCHER_ID=$$
+hyprctl dispatch submap launcher >/dev/null
+fuzzel --launch-prefix "$HOME/.config/hypr/scripts/launch-app"
+echo $? > "$XDG_RUNTIME_DIR/launcher.$LAUNCHER_ID"   # 10 = custom-1 (⌘↩)
+hyprctl dispatch submap reset >/dev/null

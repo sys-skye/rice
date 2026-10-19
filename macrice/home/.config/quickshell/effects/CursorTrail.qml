@@ -20,6 +20,8 @@ Scope {
     readonly property real windowMs: 70       // only motion this recent can leave ghosts
     readonly property real latencyMs: 16      // how far behind our position reports are; the streak is extended by this
     readonly property real maxLead: 48        // never extend the streak further than this (px)
+    readonly property string type: InputSettings.trailType   // blur | comet | dots
+    readonly property real dotGap: 9          // px between bubbles in the "dots" trail
 
     property var samples: []                  // [{ x, y, t }] newest last (t in Date.now() ms)
     property real clockOffset: NaN            // Date.now() − helper clock, smallest seen (= least delayed)
@@ -136,7 +138,7 @@ Scope {
         // Walk back along the path, dropping a ghost every `step` px
         let total = 0
         for (let i = path.length - 1; i > 0; i--) total += Math.hypot(path[i].x - path[i - 1].x, path[i].y - path[i - 1].y)
-        const step = Math.max(1.5, Math.min(total, maxDist) / maxGhosts)
+        const step = type === "dots" ? dotGap : Math.max(1.5, Math.min(total, maxDist) / maxGhosts)
         const out = []
         let want = 6                        // first ghost just behind the real cursor
         let walked = 0
@@ -153,8 +155,8 @@ Scope {
             }
             walked += seg
         }
-        // Many overlapping ghosts add up, so thin each one out
-        const thin = Math.min(1, 9 / Math.max(1, out.length))
+        // Many overlapping ghosts add up, so thin each one out (separate dots don't overlap)
+        const thin = type === "dots" ? 0.6 : Math.min(1, (type === "comet" ? 14 : 9) / Math.max(1, out.length))
         for (const g of out) g.o *= InputSettings.trailStrength * k * thin * attached * 1.6
         ghosts = out
         if (out.length) {
@@ -188,24 +190,28 @@ Scope {
                 layer.enabled: visible
                 layer.effect: MultiEffect {
                     blurEnabled: true
-                    blur: 0.35
+                    blur: root.type === "dots" ? 0.08 : root.type === "comet" ? 0.5 : 0.35
                     blurMax: 12
                 }
 
                 Repeater {
                     model: root.maxGhosts
                     // Soft dot, smaller towards the tail; the blur merges them into a streak
+                    // (comet: big glowing head in the accent colour; dots: separate bubbles)
                     delegate: Rectangle {
                         required property int index
                         readonly property var g: root.ghosts[index] ?? null
-                        readonly property real size: g ? 11 - 6 * g.d : 0
+                        readonly property real size: !g ? 0
+                            : root.type === "comet" ? 14 - 11 * g.d
+                            : root.type === "dots" ? 8 - 4 * g.d
+                            : 11 - 6 * g.d
                         visible: g !== null
                         x: g ? g.x - root.box.x + root.streakOffset.x - size / 2 : 0
                         y: g ? g.y - root.box.y + root.streakOffset.y - size / 2 : 0
                         width: size
                         height: size
                         radius: size / 2
-                        color: Theme.streak
+                        color: root.type === "comet" ? Qt.tint(Theme.accent, Qt.rgba(1, 1, 1, 0.5 * (1 - (g ? g.d : 0)))) : Theme.streak
                         opacity: g ? Math.min(1, g.o) : 0
                     }
                 }

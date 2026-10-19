@@ -1,0 +1,82 @@
+#!/usr/bin/python3 -I
+"""Close the gaps left by empty Spaces, so Spaces are always numbered 1, 2, 3…
+
+Hyprland already removes a Space once it is empty and you leave it, but the
+others keep their numbers (1, 3, 4). This renumbers them (→ 1, 2, 3) by moving
+each Space's windows down, and follows along if you're on one that moved.
+The Space you're on is never removed, even while empty.
+
+  compact-spaces          compact once
+  compact-spaces watch    compact whenever a Space goes away (runs all session)
+"""
+import json, os, socket, subprocess, sys, time
+
+EVENTS = (b"destroyworkspace>>", b"closewindow>>", b"movewindow>>", b"moveworkspace>>")
+
+
+def hypr(*args):
+    return subprocess.run(["hyprctl", *args], capture_output=True, text=True).stdout
+
+
+def query(what):
+    try:
+        return json.loads(hypr(what, "-j"))
+    except json.JSONDecodeError:
+        return [] if what != "activewindow" else {}
+
+
+def compact():
+    spaces = sorted(w["id"] for w in query("workspaces") if w["id"] > 0)
+    moves = {old: new for new, old in enumerate(spaces, 1) if old != new}
+    if not moves:
+        return
+    monitors = query("monitors")
+    shown = {m["activeWorkspace"]["id"]: m["name"] for m in monitors}
+    focused_mon = next((m["name"] for m in monitors if m["focused"]), None)
+    focused_win = query("activewindow").get("address")
+
+    cmds = []
+    for c in query("clients"):
+        new = moves.get(c["workspace"]["id"])
+        if new:
+            cmds.append(f"dispatch movetoworkspacesilent {new},address:{c['address']}")
+    # Displays showing a renumbered Space switch to its new number (no slide animation)
+    follow = [(mon, moves[old]) for old, mon in shown.items() if old in moves]
+    if follow:
+        for mon, new in follow:
+            cmds += [f"dispatch focusmonitor {mon}", f"dispatch workspace {new}"]
+        if focused_mon:
+            cmds.append(f"dispatch focusmonitor {focused_mon}")
+        if focused_win:
+            cmds.append(f"dispatch focuswindow address:{focused_win}")
+        animations = "int: 1" in hypr("getoption", "animations:enabled")
+        if animations:
+            cmds = ["keyword animations:enabled 0", *cmds, "keyword animations:enabled 1"]
+    hypr("--batch", "; ".join(cmds))
+
+
+def watch():
+    path = f"{os.environ['XDG_RUNTIME_DIR']}/hypr/{os.environ['HYPRLAND_INSTANCE_SIGNATURE']}/.socket2.sock"
+    sock = socket.socket(socket.AF_UNIX)
+    sock.connect(path)
+    sock.settimeout(0.15)
+    compact()
+    due, buf = None, b""
+    while True:
+        try:
+            data = sock.recv(65536)
+            if not data:
+                return
+            buf += data
+            *lines, buf = buf.split(b"\n")
+            if any(l.startswith(EVENTS) for l in lines):
+                due = time.monotonic() + 0.15  # let bursts (closing several windows) settle
+        except socket.timeout:
+            pass
+        if due and time.monotonic() >= due:
+            due = None
+            compact()
+
+
+if __name__ == "__main__":
+    watch() if sys.argv[1:] == ["watch"] else compact()

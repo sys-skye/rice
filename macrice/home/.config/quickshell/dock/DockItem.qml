@@ -1,12 +1,13 @@
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Wayland
 import Quickshell.Widgets
 import qs.common
 
 Item {
     id: root
-    required property var item          // { key, entry, appId, toplevels, pinned }
+    required property var item          // { key, entry, appId, toplevels, hiddenToplevels, pinned }
     required property var dockWindow
     property int pinnedIndex: -1        // position in the pinned list, -1 = not pinned
     readonly property bool running: item.toplevels.length > 0
@@ -39,6 +40,13 @@ Item {
     }
     function activate() {
         const tops = item.toplevels
+        // An app ⌘Q hid (still running in special:hidden) comes back on this Space
+        if (tops.length === 0 && item.hiddenToplevels.length > 0) {
+            const ws = Hyprland.focusedWorkspace?.id ?? 1
+            for (const h of Hyprland.toplevels.values.filter(h => item.hiddenToplevels.includes(h.wayland)))
+                Hyprland.dispatch(`movetoworkspace ${ws},address:${h.lastIpcObject?.address}`)
+            return
+        }
         if (tops.length === 0) return launch()
         // Already focused → cycle through this app's windows
         const i = tops.findIndex(t => t.activated)
@@ -186,7 +194,7 @@ Item {
                     visible: root.running
                     text: "Quit"
                     destructive: true
-                    onClicked: { root.menuOpen = false; for (const t of root.item.toplevels) t.close() }
+                    onClicked: { root.menuOpen = false; for (const t of root.item.toplevels.concat(root.item.hiddenToplevels)) t.close() }
                 }
             }
         }

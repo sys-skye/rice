@@ -10,11 +10,11 @@ if ! command -v asahi-bless >/dev/null; then
 fi
 case $1 in
     -y|--yes) yes=1 ;;
-    --set) sudo asahi-bless --set-boot-macos --next --autoconfirm; echo "Next boot: macOS"; exit ;;
+    --set) sudo asahi-bless --set-boot-macos --next --yes; echo "Next boot: macOS"; exit ;;
 esac
 if [[ -z $yes ]]; then
     read -rp "Reboot into macOS now? Unsaved work in open apps will be lost. [y/N] " a
     [[ $a == [yY]* ]] || exit 0
 fi
-sudo asahi-bless --set-boot-macos --next --autoconfirm
+sudo asahi-bless --set-boot-macos --next --yes
 systemctl reboot
