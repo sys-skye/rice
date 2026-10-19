@@ -85,35 +85,24 @@ PanelWindow {
             leftPadding: 6
             spacing: 2
             Repeater {
-                model: {
-                    // Shared Spaces (or one screen): 1…max, at least 3. Separate: only this screen's.
-                    const all = Hyprland.workspaces.values.filter(w => w.id > 0)
-                    const mine = all.filter(w => w.monitor?.name === bar.screen?.name).map(w => w.id)
-                    if (Hyprland.monitors.values.length <= 1 || !InputSettings.separateSpaces) {
-                        const max = Math.max(3, ...all.map(w => w.id))
-                        return Array.from({ length: max }, (_, i) => i + 1)
-                    }
-                    return [...new Set(mine)].sort((a, b) => a - b)
-                }
+                // Each display has its own Spaces (hypr/scripts/space): show this screen's
+                model: [...new Set(Hyprland.workspaces.values
+                    .filter(w => w.id > 0 && w.monitor?.name === bar.screen?.name).map(w => w.id))].sort((a, b) => a - b)
                 delegate: BarButton {
                     required property int modelData
                     readonly property var ws: Hyprland.workspaces.values.find(w => w.id === modelData) ?? null
                     // the Space this screen is showing
                     readonly property bool current: (Hyprland.monitorFor(bar.screen)?.activeWorkspace?.id ?? -1) === modelData
-                    // showing on the other screen right now (shared Spaces): drawn as a ring
-                    readonly property bool elsewhere: !current && Hyprland.monitors.values.some(m => m.name !== bar.screen?.name && m.activeWorkspace?.id === modelData)
                     padding: 5
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         width: current ? 16 : 7
                         height: 7
                         radius: 3.5
-                        color: current ? Theme.text : elsewhere ? "transparent" : ws && ws.toplevels.values.length > 0 ? Theme.fg(0.6) : Theme.fg(0.28)
-                        border.width: elsewhere ? 1.5 : 0
-                        border.color: Theme.fg(0.7)
+                        color: current ? Theme.text : ws && ws.toplevels.values.length > 0 ? Theme.fg(0.6) : Theme.fg(0.28)
                         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     }
-                    onClicked: Hyprland.dispatch((InputSettings.separateSpaces ? "workspace " : "focusworkspaceoncurrentmonitor ") + modelData)
+                    onClicked: Hyprland.dispatch("workspace " + modelData)
                 }
             }
         }

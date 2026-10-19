@@ -177,15 +177,9 @@ Column {
         SettingRow {
             visible: page.ext !== null
             label: "Mirror the MacBook's screen"
-            Toggle { checked: InputSettings.extMirror; onToggled: v => InputSettings.set("extMirror", v) }
-        }
-        SettingRow {
-            visible: page.ext !== null && !InputSettings.extMirror
-            label: "Displays have separate Spaces"
-            hint: InputSettings.separateSpaces ? "⌘1–9 jumps to the screen that has that Space"
-                                               : "Off: Spaces are shared, ⌘1–9 brings a Space to the screen you're on"
+            hint: InputSettings.extMirror ? "" : "Each display has its own Spaces"
             last: true
-            Toggle { checked: InputSettings.separateSpaces; onToggled: v => InputSettings.set("separateSpaces", v) }
+            Toggle { checked: InputSettings.extMirror; onToggled: v => InputSettings.set("extMirror", v) }
         }
     }
 

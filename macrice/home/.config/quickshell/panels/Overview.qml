@@ -27,6 +27,12 @@ PanelWindow {
                       || ((a.lastIpcObject?.at?.[1] ?? 0) - (b.lastIpcObject?.at?.[1] ?? 0))
                       || ((a.lastIpcObject?.at?.[0] ?? 0) - (b.lastIpcObject?.at?.[0] ?? 0)))
 
+    // Spaces are numbered per display (hypr/scripts/space): 101 on the external screen is its Space 1
+    function spaceNumber(ws) {
+        return Hyprland.workspaces.values.filter(w => w.id > 0 && w.monitor === ws.monitor)
+            .map(w => w.id).sort((a, b) => a - b).indexOf(ws.id) + 1
+    }
+
     // Pick the column count that makes thumbnails as big as possible
     readonly property real areaW: width - 120
     readonly property real areaH: height - 200
@@ -166,7 +172,7 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             width: Math.min(implicitWidth, root.grid.cellW - 80)
                             text: (cell.entry?.name ?? cell.ipc.class ?? "") +
-                                  (cell.modelData.workspace.id !== Hyprland.focusedWorkspace?.id ? "  ·  Space " + cell.modelData.workspace.id : "")
+                                  (cell.modelData.workspace.id !== Hyprland.focusedWorkspace?.id ? "  ·  Space " + root.spaceNumber(cell.modelData.workspace) : "")
                             bold: mouse.containsMouse
                         }
                     }

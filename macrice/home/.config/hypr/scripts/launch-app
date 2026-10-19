@@ -5,7 +5,7 @@
 result=$XDG_RUNTIME_DIR/launcher.$LAUNCHER_ID
 (
   for _ in $(seq 40); do [[ -s $result ]] && break; sleep 0.025; done
-  [[ $(cat "$result" 2>/dev/null) == 10 ]] && hyprctl dispatch workspace emptynm >/dev/null
+  [[ $(cat "$result" 2>/dev/null) == 10 ]] && "$HOME/.config/hypr/scripts/space" go new
   rm -f "$result"
   # Already running but hidden by ⌘Q (Thunderbird, KeePassXC…)? Bring it here
   # instead of starting it again: match the hidden window's program name.

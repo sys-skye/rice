@@ -63,15 +63,18 @@ Panel {
                     implicitHeight: 24
                     padding: 6
                     vInset: 0
-                    active: (Hyprland.focusedWorkspace?.id ?? 0) === index + 1
+                    // Spaces of the window's own display (hypr/scripts/space)
+                    active: Hyprland.workspaces.values
+                        .filter(w => w.id > 0 && w.monitor?.id === root.ipc.monitor).map(w => w.id)
+                        .sort((a, b) => a - b).indexOf(root.ipc.workspace?.id) === index
                     Label { anchors.verticalCenter: parent.verticalCenter; text: index + 1 }
-                    onClicked: root.dispatch("movetoworkspacesilent " + (index + 1) + "," + root.addr)
+                    onClicked: { Ui.openPanel = ""; Ui.run(Settings.scripts + "/space send " + (index + 1) + " " + root.ipc.address) }
                 }
             }
         }
     }
 
-    MenuItem { text: "Move to New Space"; shortcut: "⌥⌘0"; onClicked: root.dispatch("movetoworkspace empty," + root.addr) }
+    MenuItem { text: "Move to New Space"; shortcut: "⌥⌘0"; onClicked: { Ui.openPanel = ""; Ui.run(Settings.scripts + "/space move new " + root.ipc.address) } }
 
     // Move to another screen (only when more than one is connected)
     Item {

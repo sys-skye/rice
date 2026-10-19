@@ -1,17 +1,26 @@
 #!/usr/bin/python3 -I
-"""Close the gaps left by empty Spaces, so Spaces are always numbered 1, 2, 3…
+"""Close the gaps left by empty Spaces, so each display's Spaces are always 1, 2, 3…
 
 Hyprland already removes a Space once it is empty and you leave it, but the
 others keep their numbers (1, 3, 4). This renumbers them (→ 1, 2, 3) by moving
 each Space's windows down, and follows along if you're on one that moved.
+A Space that lands on another display (moved there, or its display was
+unplugged) is renumbered into that display's block (see scripts/space).
 The Space you're on is never removed, even while empty.
 
   compact-spaces          compact once
   compact-spaces watch    compact whenever a Space goes away (runs all session)
 """
-import json, os, socket, subprocess, sys, time
+import importlib.machinery, importlib.util, json, os, socket, subprocess, sys, time
 
-EVENTS = (b"destroyworkspace>>", b"closewindow>>", b"movewindow>>", b"moveworkspace>>")
+# shared numbering rules (scripts/space has no .py suffix, so load it by path)
+_loader = importlib.machinery.SourceFileLoader("space", os.path.join(os.path.dirname(os.path.realpath(__file__)), "space"))
+space = importlib.util.module_from_spec(importlib.util.spec_from_loader("space", _loader))
+_loader.exec_module(space)
+
+EVENTS = (b"destroyworkspace>>", b"closewindow>>", b"movewindow>>", b"moveworkspace>>",
+          b"createworkspace>>", b"monitoradded>>", b"monitorremoved>>")
+RULE_EVENTS = (b"configreloaded>>", b"monitoradded>>")
 
 
 def hypr(*args):
@@ -25,23 +34,49 @@ def query(what):
         return [] if what != "activewindow" else {}
 
 
-def compact():
-    spaces = sorted(w["id"] for w in query("workspaces") if w["id"] > 0)
-    moves = {old: new for new, old in enumerate(spaces, 1) if old != new}
-    if not moves:
-        return
+def pin_blocks():
+    """Workspace rules tying each display's block of ids to it, so new Spaces open on
+    the right screen. Hyprland only honours exact ids here (not r[a-b] ranges), and a
+    config reload drops them, so they're (re)applied from here."""
     monitors = query("monitors")
+    rules = [f"keyword workspace {i}, monitor:{m['name']}"
+             for m in monitors for b in [space.base(m["name"], monitors)] for i in range(b + 1, b + 100)]
+    hypr("--batch", "; ".join(rules))
+
+
+def compact():
+    """Renumber each display's Spaces to its block (see scripts/space): base+1, base+2…
+
+    Only moves whose target number is free are done; the events they cause run
+    this again, so chains (a Space moved to the other display) settle in a few passes.
+    """
+    monitors = query("monitors")
+    spaces = [w for w in query("workspaces") if w["id"] > 0]
+    taken = {w["id"] for w in spaces}
+    moves = {}  # old id -> (new id, display)
+    for m in monitors:
+        b = space.base(m["name"], monitors)
+        mine = sorted((w["id"] for w in spaces if w["monitor"] == m["name"]),
+                      key=lambda i: (not space.in_block(i, b), i))
+        moves.update({old: (new, m["name"]) for new, old in enumerate(mine, b + 1) if old != new})
+    ready = {old: t for old, t in moves.items() if t[0] not in taken}
+    if not ready:
+        if moves:  # every target is busy (two Spaces swapped displays): park one on a spare number
+            old, (new, mon) = next(iter(moves.items()))
+            b = space.base(mon, monitors)
+            ready = {old: (next(i for i in range(b + 50, b + 100) if i not in taken), mon)}
+        else:
+            return
     shown = {m["activeWorkspace"]["id"]: m["name"] for m in monitors}
     focused_mon = next((m["name"] for m in monitors if m["focused"]), None)
     focused_win = query("activewindow").get("address")
 
     cmds = []
     for c in query("clients"):
-        new = moves.get(c["workspace"]["id"])
-        if new:
-            cmds.append(f"dispatch movetoworkspacesilent {new},address:{c['address']}")
+        if c["workspace"]["id"] in ready:
+            cmds.append(f"dispatch movetoworkspacesilent {ready[c['workspace']['id']][0]},address:{c['address']}")
     # Displays showing a renumbered Space switch to its new number (no slide animation)
-    follow = [(mon, moves[old]) for old, mon in shown.items() if old in moves]
+    follow = [(mon, ready[old][0]) for old, mon in shown.items() if old in ready]
     if follow:
         for mon, new in follow:
             cmds += [f"dispatch focusmonitor {mon}", f"dispatch workspace {new}"]
@@ -52,7 +87,8 @@ def compact():
         animations = "int: 1" in hypr("getoption", "animations:enabled")
         if animations:
             cmds = ["keyword animations:enabled 0", *cmds, "keyword animations:enabled 1"]
-    hypr("--batch", "; ".join(cmds))
+    if cmds:
+        hypr("--batch", "; ".join(cmds))
 
 
 def watch():
@@ -60,6 +96,7 @@ def watch():
     sock = socket.socket(socket.AF_UNIX)
     sock.connect(path)
     sock.settimeout(0.15)
+    pin_blocks()
     compact()
     due, buf = None, b""
     while True:
@@ -69,6 +106,8 @@ def watch():
                 return
             buf += data
             *lines, buf = buf.split(b"\n")
+            if any(l.startswith(RULE_EVENTS) for l in lines):
+                pin_blocks()
             if any(l.startswith(EVENTS) for l in lines):
                 due = time.monotonic() + 0.15  # let bursts (closing several windows) settle
         except socket.timeout:

@@ -50,7 +50,6 @@ Singleton {
     property bool extMirror: false         // show the same picture as the laptop
     property string mainDisplay: "builtin" // where the Dock lives: builtin | external
     property var extSize: [2560, 1440]     // current pixel size of the external screen (for placing it)
-    property bool separateSpaces: false    // false = Spaces are shared: ⌘N pulls Space N to the screen you're on
     // Keyboard
     property int repeatRate: 40
     property int repeatDelay: 250
@@ -144,9 +143,6 @@ Singleton {
               + "gestures:workspace_swipe_forever = " + swipeForever + "\n\n"
               + (Math.abs(displayScale - 2) > 0.01 ? "# Built-in display scale\nmonitor = eDP-1, preferred, auto, " + displayScale.toFixed(6) + "\n\n" : "")
               + "# External display (HDMI): mode, position, scale\nmonitor = " + extMonitorLine().replace(/,/g, ", ") + "\n\n"
-              + (separateSpaces ? "# Displays have separate Spaces: ⌘N jumps to wherever Space N is\n"
-                 + [1,2,3,4,5,6,7,8,9].map(i => "unbind = SUPER, code:" + (9 + i) + "\nbindd = SUPER, code:" + (9 + i)
-                                                 + ", Space " + i + ", workspace, " + i + "\n").join("") + "\n" : "")
               + "# Terminal scrolling speed on the trackpad\n"
               + "windowrule = match:class ^(kitty|Alacritty|foot|floating-term)$, scroll_touchpad " + terminalScroll.toFixed(2) + "\n"
         for (const name of Object.keys(mice)) {
@@ -162,7 +158,7 @@ Singleton {
             scrollFactor, terminalScroll, mouseScrollFactor, mouseNaturalScroll, mice, repeatRate, repeatDelay,
             trailEnabled, trailLength, trailStrength, trailType, displayScale,
             swipeDistance, swipeSwitchAt, swipeFlick, swipeForever, gapsIn, gapsOut, rounding,
-            extMode, extScale, extPosition, extMirror, mainDisplay, separateSpaces
+            extMode, extScale, extPosition, extMirror, mainDisplay
         }, null, 2)
         writer.command = ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s\\n' \"$2\" > \"$1\" && printf '%s' \"$3\" > \"$4\" && hyprctl reload >/dev/null",
                           "sh", jsonPath, json, confText(), confPath]
