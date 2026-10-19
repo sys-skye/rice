@@ -17,6 +17,8 @@ keeps each block gap-free.
   space send N|new [ADDR] move the window there, stay here
   space next|prev         neighbouring Space on this display (next can add one)
   space movenext|moveprev move the window to the neighbouring Space
+  space next-all|prev-all every display steps to its neighbouring Space at once
+                          (only to Spaces that exist; focus stays where it is)
 """
 import json, subprocess, sys
 
@@ -47,6 +49,35 @@ def in_block(ws_id, b):
     return b < ws_id < b + 100
 
 
+def spaces_on(mon, monitors, workspaces):
+    """This display's Spaces in order, and where it is among them (1-based)."""
+    b = base(mon["name"], monitors)
+    mine = sorted((w for w in workspaces if w["monitor"] == mon["name"]),
+                  key=lambda w: (not in_block(w["id"], b), w["id"]))
+    ids = [w["id"] for w in mine]
+    current = mon["activeWorkspace"]["id"]
+    return ids, ids.index(current) + 1 if current in ids else 1
+
+
+def step_all(step, monitors, workspaces):
+    """Show the next/previous Space on every display in one go."""
+    focused = next((m["name"] for m in monitors if m["focused"]), None)
+    cmds = []
+    # the focused display last, so focus ends up back where it was
+    for mon in sorted(monitors, key=lambda m: m["focused"]):
+        ids, idx = spaces_on(mon, monitors, workspaces)
+        if 1 <= idx + step <= len(ids):
+            cmds.append(f"dispatch hl.dsp.focus({{ workspace = {ids[idx + step - 1]} }})")
+    if not cmds:
+        return
+    cmds.append(f"dispatch hl.dsp.focus({{ monitor = '{focused}' }})")
+    # switching another display's Space would otherwise drag the cursor over there
+    warps = hypr("getoption", "cursor:no_warps")
+    restore = "true" if "bool: true" in warps or "int: 1" in warps else "false"
+    hypr("--batch", "; ".join(["eval hl.config({ cursor = { no_warps = true } })", *cmds,
+                               f"eval hl.config({{ cursor = {{ no_warps = {restore} }} }})"]))
+
+
 def main(argv):
     if not argv:
         sys.exit(__doc__)
@@ -55,6 +86,8 @@ def main(argv):
 
     monitors = query("monitors")
     workspaces = [w for w in query("workspaces") if w["id"] > 0]
+    if action in ("next-all", "prev-all"):
+        return step_all(1 if action == "next-all" else -1, monitors, workspaces)
     if addr:  # act on that window's display
         win = next((c for c in query("clients") if c["address"] == addr), None)
         mon = next((m for m in monitors if win and m["id"] == win["monitor"]), None)
@@ -63,11 +96,9 @@ def main(argv):
     if not mon:
         return
     b = base(mon["name"], monitors)
-    mine = sorted((w for w in workspaces if w["monitor"] == mon["name"]),
-                  key=lambda w: (not in_block(w["id"], b), w["id"]))
-    ids = [w["id"] for w in mine]
+    ids, idx = spaces_on(mon, monitors, workspaces)
+    mine = [w for w in workspaces if w["id"] in ids]
     current = mon["activeWorkspace"]["id"]
-    idx = ids.index(current) + 1 if current in ids else 1
     taken = {w["id"] for w in workspaces}
     fresh = next(i for i in range(b + 1, b + 100) if i not in taken and i > max([b, *(i for i in ids if in_block(i, b))]))
 

@@ -36,7 +36,7 @@ PanelWindow {
     readonly property var modSymbols: ({ CTRL: "⌃", ALT: "⌥", SHIFT: "⇧", SUPER: "⌘" })
     readonly property var keyNames: ({
         SPACE: "Space", RETURN: "Return", ESCAPE: "Esc", SLASH: "/", TAB: "Tab", PRINT: "Print",
-        LEFT: "←", RIGHT: "→", UP: "↑", DOWN: "↓",
+        LEFT: "←", RIGHT: "→", UP: "↑", DOWN: "↓", Page_Up: "PgUp", Page_Down: "PgDn",
         "mouse:272": "Drag", "mouse:273": "Right-drag", mouse_down: "Scroll ↓", mouse_up: "Scroll ↑"
     })
     function prettyKeys(mods, key) {

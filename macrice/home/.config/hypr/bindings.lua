@@ -97,6 +97,8 @@ bind("SUPER + mouse:273", "Resize window", dsp.window.resize(), { mouse = true }
 -- Each display has its own Spaces 1, 2, 3… (scripts/space); these act on the focused display
 bind("SUPER + CTRL + LEFT", "Previous space", script("space prev"))
 bind("SUPER + CTRL + RIGHT", "Next space", script("space next"))
+bind("SUPER + ALT + Page_Up", "Previous space on every display", script("space prev-all"))
+bind("SUPER + ALT + Page_Down", "Next space on every display", script("space next-all"))
 bind("SUPER + CTRL + SHIFT + LEFT", "Move window to previous space", script("space moveprev"))
 bind("SUPER + CTRL + SHIFT + RIGHT", "Move window to next space", script("space movenext"))
 bind("SUPER + CTRL + ALT + LEFT", "Move window to the display on the left", dsp.window.move({ monitor = "l" }))
