@@ -1,0 +1,14 @@
+# Installed by install.sh with dnf (Hyprland bits come from the sdegler/hyprland COPR).
+# Desktop
+hyprland uwsm hypridle hyprlock hyprpolkitagent hyprsunset hyprpicker
+xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
+quickshell waybar fuzzel mako swaybg
+# Apps used by the rice
+kitty alacritty nautilus kwrite gnome-calculator pavucontrol network-manager-applet blueman nwg-look btop fastfetch
+# Tools the scripts call
+grim slurp satty wl-clipboard cliphist brightnessctl playerctl jq python3 libnotify rsync xdg-terminal-exec
+# Look
+rsms-inter-fonts papirus-icon-theme adw-gtk3-theme breeze-cursor-theme
+# KDE app theming (Dolphin/KWrite follow Light/Dark) + power modes
+plasma-integration plasma-workspace kf6-kconfig tuned-ppd
+asahi-bless

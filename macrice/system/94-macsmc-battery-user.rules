@@ -1,0 +1,2 @@
+# Allow wheel to change the charge limit (used by the Quickshell battery menu)
+SUBSYSTEM=="power_supply", KERNEL=="macsmc-battery", RUN+="/bin/sh -c 'chgrp wheel /sys%p/charge_control_end_threshold /sys%p/charge_control_start_threshold && chmod g+w /sys%p/charge_control_end_threshold /sys%p/charge_control_start_threshold'"
