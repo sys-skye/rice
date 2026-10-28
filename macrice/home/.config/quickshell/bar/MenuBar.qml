@@ -190,18 +190,6 @@ PanelWindow {
                 onClicked: bar.toggle("stats")
             }
             BarButton {
-                id: airdropBtn
-                visible: AirDrop.receiving || AirDrop.sending
-                active: Ui.openPanel === "airdrop"
-                AirDropIcon {
-                    anchors.verticalCenter: parent.verticalCenter
-                    size: 17
-                    color: AirDrop.sending ? Theme.accent : Theme.text
-                }
-                onClicked: bar.toggle("airdrop")
-                onRightClicked: AirDrop.toggle()
-            }
-            BarButton {
                 id: btBtn
                 active: Ui.openPanel === "bluetooth"
                 Icon {
@@ -295,7 +283,6 @@ PanelWindow {
     MediaPanel { anchorItem: mediaBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar; player: bar.player ?? Mpris.players.values[0] ?? null }
     StatsPanel { anchorItem: statsBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     // Opened from the bar icon (while on) or from the Control Center tile
-    AirDropPanel { anchorItem: airdropBtn.visible ? airdropBtn : ccBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     BluetoothPanel { anchorItem: btBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     WifiPanel { anchorItem: wifiBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }
     SoundPanel { anchorItem: soundBtn; enabledHere: bar.isFocusedScreen; ownerWindow: bar }

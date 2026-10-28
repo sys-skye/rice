@@ -31,7 +31,6 @@ Panel {
         property string subtitle: ""
         property bool on: false
         property bool compact: false
-        property bool airdropIcon: false   // draw the AirDrop mark instead of a glyph
         signal toggled()
         signal opened()
         height: compact ? 44 : 50
@@ -44,8 +43,7 @@ Panel {
             width: 30; height: 30; radius: 15
             color: tile.on ? Theme.accent : Theme.fg(0.14)
             Behavior on color { ColorAnimation { duration: 150 } }
-            Icon { anchors.centerIn: parent; text: tile.icon; size: 15; visible: !tile.airdropIcon }
-            AirDropIcon { anchors.centerIn: parent; size: 17; visible: tile.airdropIcon }
+            Icon { anchors.centerIn: parent; text: tile.icon; size: 15 }
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: tile.toggled() }
         }
         Column {
@@ -74,7 +72,7 @@ Panel {
     Row {
         width: parent.width
         spacing: 10
-        // Connectivity: Wi-Fi, Bluetooth, AirDrop share one rounded box, like macOS
+        // Connectivity: Wi-Fi and Bluetooth share one rounded box, like macOS
         Rectangle {
             width: (parent.width - 10) / 2
             height: toggles.height
@@ -83,7 +81,8 @@ Panel {
             Column {
                 anchors.fill: parent
                 anchors.margins: 3
-                spacing: (height - 150) / 2
+                spacing: (height - 100) / 3
+                topPadding: spacing
                 Tile {
                     width: parent.width; color: "transparent"
                     icon: Networking.wifiEnabled ? Glyphs.wifi[4] : Glyphs.wifiOff
@@ -101,15 +100,6 @@ Panel {
                     on: root.bt?.enabled ?? false
                     onToggled: if (root.bt) root.bt.enabled = !root.bt.enabled
                     onOpened: Ui.openPanel = "bluetooth"
-                }
-                Tile {
-                    width: parent.width; color: "transparent"
-                    airdropIcon: true
-                    title: "AirDrop"
-                    subtitle: AirDrop.available ? AirDrop.shortSummary : "Not set up"
-                    on: AirDrop.receiving
-                    onToggled: AirDrop.toggle()
-                    onOpened: Ui.openPanel = "airdrop"
                 }
             }
         }

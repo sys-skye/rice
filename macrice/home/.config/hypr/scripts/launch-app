@@ -5,7 +5,12 @@
 result=$XDG_RUNTIME_DIR/launcher.$LAUNCHER_ID
 (
   for _ in $(seq 40); do [[ -s $result ]] && break; sleep 0.025; done
-  [[ $(cat "$result" 2>/dev/null) == 10 ]] && "$HOME/.config/hypr/scripts/space" go new
+  if [[ $(cat "$result" 2>/dev/null) == 10 ]]; then
+    "$HOME/.config/hypr/scripts/space" go new
+    # Hyprland tags what it launches with the Space ⌘Space was pressed on and
+    # opens the window back there; drop the tag so it opens on the new Space
+    unset HL_INITIAL_WORKSPACE_TOKEN
+  fi
   rm -f "$result"
   # Already running but hidden by ⌘Q (Thunderbird, KeePassXC…)? Bring it here
   # instead of starting it again: match the hidden window's program name.

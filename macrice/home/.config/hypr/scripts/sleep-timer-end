@@ -1,0 +1,19 @@
+#!/bin/sh
+# Sleep Timer ran out (common/SleepTimer.qml). Lock and turn the screens off;
+# any key or mouse move wakes them (misc:key_press/mouse_move_enables_dpms),
+# like a Mac's display sleep. The built-in keyboard/trackpad can't wake the Mac
+# from real suspend on Asahi, so only suspend if nobody touches it for GRACE
+# minutes (then the lid or power button wakes it).
+GRACE=${1:-15}
+
+loginctl lock-session
+sleep 2
+hyprctl dispatch 'hl.dsp.dpms({ action = "off" })' >/dev/null
+
+end=$(( $(date +%s) + GRACE * 60 ))
+while [ "$(date +%s)" -lt "$end" ]; do
+    sleep 5
+    # A screen came back on: someone is using it, stay awake
+    hyprctl monitors -j | grep -q '"dpmsStatus": true' && exit 0
+done
+systemctl suspend

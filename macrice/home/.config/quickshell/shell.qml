@@ -37,7 +37,7 @@ ShellRoot {
     Overview {}
 
     // From a terminal or a Hyprland bind:  qs ipc call panel toggle control
-    // Names: system app wifi bluetooth airdrop sound battery control calendar stats media
+    // Names: system app wifi bluetooth sound battery control calendar stats media
     IpcHandler {
         target: "panel"
         function toggle(name: string): void { Ui.toggle(name) }
@@ -69,13 +69,6 @@ ShellRoot {
         function toggle(): void { notchDropdown.toggle() }
         function open(): void { notchDropdown.show() }
         function close(): void { notchDropdown.hide() }
-    }
-    // qs ipc call airdrop toggle|on|off   (AirDrop via omdrop)
-    IpcHandler {
-        target: "airdrop"
-        function toggle(): void { AirDrop.toggle() }
-        function on(): void { AirDrop.setOn(true) }
-        function off(): void { AirDrop.setOn(false) }
     }
     // qs ipc call settings open trackpad   (general wifi bluetooth notifications sound display battery lock trackpad keyboard appearance dock)
     IpcHandler {
