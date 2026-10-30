@@ -49,7 +49,7 @@ else
   sudo dnf install -y --skip-unavailable "${pkgs[@]}"
 fi
 # The config is Lua (hyprland.lua), which needs Hyprland 0.55 or newer
-hl_version=$(Hyprland --version-json 2>/dev/null | sed -n 's/.*"tag": *"v\{0,1\}\([0-9.]*\)".*/\1/p' | head -1)
+hl_version=$(Hyprland --version-json 2>/dev/null | sed -n 's/.*"tag": *"v\{0,1\}\([0-9.]*\)".*/\1/p' | head -1 || true)
 if [[ -n $hl_version ]] && [[ $(printf '%s\n' 0.55 "$hl_version" | sort -V | head -1) != 0.55 ]]; then
   warn "Hyprland $hl_version is too old for this config (needs 0.55+, which reads hyprland.lua)"
 fi
@@ -75,9 +75,9 @@ backup=~/macrice-backup-$(date +%Y%m%d-%H%M%S)
 moved=0
 rels=()
 for d in "$repo"/home/.config/*; do                      # whole app folders (hypr, quickshell, kitty…)
-  case $(basename "$d") in uwsm | autostart) ;; *) rels+=(".config/$(basename "$d")") ;; esac
+  case $(basename "$d") in uwsm | autostart | systemd) ;; *) rels+=(".config/$(basename "$d")") ;; esac
 done
-for f in "$repo"/home/.config/uwsm/* "$repo"/home/.config/autostart/* "$repo"/home/Pictures/Wallpapers/*; do
+for f in "$repo"/home/.config/uwsm/* "$repo"/home/.config/autostart/* "$repo"/home/.config/systemd/user/* "$repo"/home/Pictures/Wallpapers/*; do
   rels+=("${f#"$repo/home/"}")                            # single files inside shared folders
 done
 for rel in "${rels[@]}"; do
