@@ -1,6 +1,6 @@
 # Installed by install.sh with dnf (Hyprland bits come from the sdegler/hyprland COPR).
 # Desktop
-hyprland uwsm hypridle hyprlock hyprpolkitagent hyprsunset hyprpicker
+hyprland hyprland-uwsm uwsm hypridle hyprlock hyprpolkitagent hyprsunset hyprpicker
 xdg-desktop-portal-hyprland xdg-desktop-portal-gtk
 quickshell waybar fuzzel mako swaybg
 # Apps used by the rice
